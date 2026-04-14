@@ -272,6 +272,37 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   padding: 14px 36px; background: #0d1117; border: 1px solid #30363d; color: #8b949e;
   border-radius: 8px; font-size: 15px; font-weight: 500;
 }
+.waiting-msg.small { padding: 8px 16px; font-size: 13px; }
+
+.lobby-controls { display: flex; gap: 14px; align-items: center; }
+
+.ready-btn {
+  padding: 12px 28px; background: #30363d; border: 2px solid #30363d;
+  color: #e6edf3; border-radius: 8px; font-size: 15px; font-weight: bold;
+  cursor: pointer; transition: all 0.15s;
+}
+.ready-btn:hover { transform: translateY(-2px); }
+.ready-btn.ready-on {
+  background: #238636; border-color: #3fb950; color: white;
+  box-shadow: 0 4px 14px rgba(63, 185, 80, 0.4);
+}
+
+.start-btn {
+  padding: 12px 30px; background: linear-gradient(135deg, #ffd33d, #db6d28);
+  border: none; color: #0d1117; border-radius: 8px; font-size: 16px; font-weight: bold;
+  cursor: pointer; transition: all 0.15s;
+  box-shadow: 0 4px 14px rgba(255, 211, 61, 0.3);
+}
+.start-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 211, 61, 0.5);
+}
+.start-btn:disabled {
+  background: #30363d; color: #6e7681; cursor: not-allowed;
+  box-shadow: none;
+}
+
+.host-crown { font-size: 13px; }
 
 /* 结算浮层 */
 .hand-end {

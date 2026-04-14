@@ -104,10 +104,20 @@ export default function Table({ user }) {
   const act = (type, amount) => {
     socketRef.current.emit('game:action', { type, amount });
   };
+  const toggleReady = () => {
+    socketRef.current.emit('game:ready', { ready: !me?.ready });
+  };
+  const startGame = () => {
+    socketRef.current.emit('game:start');
+  };
 
-  // 计算当前牌桌活跃玩家数（有筹码 + 未完全掉线）
-  const activeCount = state.players.filter(p => p.stack > 0 && !p.sittingOut).length;
   const seatedCount = state.players.length;
+  const isHost = state.hostId === user.id;
+  const othersReady = state.players
+    .filter(p => p.id !== state.hostId && p.stack > 0)
+    .every(p => p.ready);
+  const readyCount = state.players.filter(p => p.ready && p.stack > 0).length;
+  const canStart = isHost && seatedCount >= 2 && othersReady && readyCount >= 1;
 
   const myIdx = state.players.findIndex(p => p.id === user.id);
   const ordered = myIdx >= 0
@@ -152,6 +162,7 @@ export default function Table({ user }) {
               isButton={state.buttonPlayerId === p.id}
               isSB={state.sbPlayerId === p.id}
               isBB={state.bbPlayerId === p.id}
+              isHost={state.hostId === p.id}
               hole={p.id === user.id ? hole : null}
               showdownHole={handEnd?.showdownHoles?.find(h => h.playerId === p.id)?.hole}
               isWinner={handEnd?.winners?.some(w => w.playerId === p.id)}
@@ -175,12 +186,35 @@ export default function Table({ user }) {
 
       <div className="bottom-bar">
         {inWaiting && me && (
-          <div className="waiting-msg">
-            {seatedCount < 2
-              ? '⏳ 等待其他玩家加入房间...'
-              : state.handNo === 0
-              ? '⏳ 即将开始第一手...'
-              : '🎬 下一手即将开始...'}
+          <div className="lobby-controls">
+            {seatedCount < 2 && (
+              <div className="waiting-msg">⏳ 等待其他玩家加入房间...</div>
+            )}
+            {seatedCount >= 2 && (
+              <>
+                <button
+                  className={`ready-btn ${me.ready ? 'ready-on' : ''}`}
+                  onClick={toggleReady}
+                >
+                  {me.ready ? '✅ 已准备（点击取消）' : '点击准备'}
+                </button>
+                {isHost && (
+                  <button
+                    className="start-btn"
+                    disabled={!canStart}
+                    onClick={startGame}
+                    title={canStart ? '开始游戏' : '等待所有玩家准备'}
+                  >
+                    🎬 开始游戏 ({readyCount}/{seatedCount})
+                  </button>
+                )}
+                {!isHost && (
+                  <div className="waiting-msg small">
+                    {othersReady ? '⌛ 等待房主开始游戏' : `⌛ 等待其他玩家准备 (${readyCount}/${seatedCount})`}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
         {!inWaiting && me && me.sittingOut && (

@@ -78,9 +78,14 @@ export class Game {
   }
 
   markReady(playerId) {
+    // 仅设置 ready 标记，不自动开始 —— 由 rooms/host 显式触发 tryStart
     const p = this.players.find(x => x.id === playerId);
     if (p) p.ready = true;
-    this.tryStart();
+  }
+
+  setReady(playerId, ready = true) {
+    const p = this.players.find(x => x.id === playerId);
+    if (p) p.ready = !!ready;
   }
 
   tryStart() {

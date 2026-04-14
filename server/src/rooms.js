@@ -77,8 +77,7 @@ class RoomManager {
         seat: room.game.players.length,
       });
       room.buyIns.set(user.id, amount);
-      // 加入即自动 ready：手局进行中时下一手会自动参与
-      room.game.markReady(user.id);
+      // 加入不再自动 ready —— 由玩家显式点击 Ready，房主点击 Start 触发第一手
     }
     room.sockets.set(user.id, socket.id);
     socket.join(roomId);
@@ -99,11 +98,36 @@ class RoomManager {
     this.broadcastState(roomId);
   }
 
-  ready(roomId, userId) {
+  setReady(roomId, userId, ready) {
     const room = this.rooms.get(roomId);
-    if (!room) return;
-    room.game.markReady(userId);
+    if (!room) return { error: '房间不存在' };
+    const p = room.game.players.find(x => x.id === userId);
+    if (!p) return { error: '玩家不在房间' };
+    room.game.setReady(userId, !!ready);
     this.broadcastState(roomId);
+    return { ok: true };
+  }
+
+  startGame(roomId, userId) {
+    const room = this.rooms.get(roomId);
+    if (!room) return { error: '房间不存在' };
+    if (room.meta.created_by !== userId) return { error: '仅房主可开始游戏' };
+    if (room.game.phase !== 'WAITING') return { error: '游戏已在进行中' };
+    // 房主自动 ready
+    room.game.setReady(userId, true);
+    // 统计可参与人数（ready 且有筹码）
+    const eligible = room.game.players.filter(p => p.ready && p.stack > 0);
+    if (eligible.length < 2) return { error: '至少需要 2 名已准备玩家' };
+    // 非房主玩家必须全部 ready（stack>0 的）
+    const notReady = room.game.players.filter(
+      p => p.id !== userId && p.stack > 0 && !p.ready
+    );
+    if (notReady.length > 0) {
+      return { error: `还有 ${notReady.length} 位玩家未准备` };
+    }
+    room.game.tryStart();
+    this.broadcastState(roomId);
+    return { ok: true };
   }
 
   act(roomId, userId, action) {
@@ -116,6 +140,7 @@ class RoomManager {
     const room = this.rooms.get(roomId);
     if (!room || !this.io) return;
     const state = room.game.publicState();
+    state.hostId = room.meta.created_by;
     this.io.to(roomId).emit('state', state);
     // 单独给每位玩家推送底牌
     for (const [userId, socketId] of room.sockets.entries()) {

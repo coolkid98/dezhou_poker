@@ -13,7 +13,7 @@ const SEAT_POS = {
 
 export default function Seat({
   player, position, total,
-  isSelf, isTurn, isButton, isSB, isBB, turnDeadline,
+  isSelf, isTurn, isButton, isSB, isBB, isHost, turnDeadline,
   hole, showdownHole, isWinner, actionPopup,
 }) {
   const layout = SEAT_POS[total] || SEAT_POS[6];
@@ -68,6 +68,7 @@ export default function Seat({
 
       <div className="seat-info">
         <div className="seat-name">
+          {isHost && <span className="host-crown" title="房主">👑</span>}
           {positionBadge && <span className={positionBadge.cls}>{positionBadge.label}</span>}
           <span className="nick">{player.nickname}</span>
           {player.sittingOut && <span className="tag">旁观</span>}

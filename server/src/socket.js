@@ -41,8 +41,17 @@ export function attachSocket(io) {
       }
     });
 
-    socket.on('game:ready', () => {
-      if (currentRoomId) rooms.ready(currentRoomId, user.id);
+    socket.on('game:ready', (payload = {}) => {
+      if (!currentRoomId) return;
+      const ready = payload.ready !== false; // 默认 true
+      const res = rooms.setReady(currentRoomId, user.id, ready);
+      if (res && res.error) socket.emit('error', { message: res.error });
+    });
+
+    socket.on('game:start', () => {
+      if (!currentRoomId) return;
+      const res = rooms.startGame(currentRoomId, user.id);
+      if (res && res.error) socket.emit('error', { message: res.error });
     });
 
     socket.on('game:action', (action) => {
