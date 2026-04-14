@@ -29,17 +29,23 @@ export default function ActionBar({ me, currentBet, minRaise, myTurn, turnDeadli
 
   return (
     <div className="action-bar">
-      <div className="timer-pill">⏱ {remain}s</div>
-      <button className="btn-fold" onClick={() => onAct('fold')}>弃牌</button>
-      {canCheck ? (
-        <button className="btn-check" onClick={() => onAct('check')}>过牌</button>
-      ) : (
-        <button className="btn-call" onClick={() => onAct('call')}>
-          跟注 {Math.min(toCall, me.stack)}
-        </button>
-      )}
+      {/* 主操作行：计时 + 弃牌/过牌/跟注 + All-in */}
+      <div className="action-main">
+        <div className="timer-pill">⏱ {remain}s</div>
+        <button className="btn-fold" onClick={() => onAct('fold')}>弃牌</button>
+        {canCheck ? (
+          <button className="btn-check" onClick={() => onAct('check')}>过牌</button>
+        ) : (
+          <button className="btn-call" onClick={() => onAct('call')}>
+            跟注 {Math.min(toCall, me.stack)}
+          </button>
+        )}
+        <button className="btn-allin" onClick={() => onAct('allin')}>All-in</button>
+      </div>
+
+      {/* 加注行（可选） */}
       {canRaise && (
-        <>
+        <div className="action-raise">
           <div className="raise-group">
             <input
               type="range"
@@ -58,9 +64,8 @@ export default function ActionBar({ me, currentBet, minRaise, myTurn, turnDeadli
           <button className="btn-raise" onClick={() => onAct('raise', raiseTo)}>
             加注至 {raiseTo}
           </button>
-        </>
+        </div>
       )}
-      <button className="btn-allin" onClick={() => onAct('allin')}>All-in ({me.stack})</button>
     </div>
   );
 }

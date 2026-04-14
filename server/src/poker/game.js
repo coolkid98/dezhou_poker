@@ -481,8 +481,7 @@ export class Game {
     this.currentBet = 0;
     this.turnIdx = -1;
     this.onUpdate();
-    // 3.5 秒后自动开始下一手，给玩家看结算的时间
-    this.scheduleAutoStart();
+    // 不自动开始下一手，由房主手动触发
   }
 
   logAction(a) {

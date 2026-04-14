@@ -5,7 +5,7 @@ import { api } from '../api.js';
 export default function Lobby() {
   const [rooms, setRooms] = useState([]);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: '欢乐桌', smallBlind: 10, bigBlind: 20, maxSeats: 9 });
+  const [form, setForm] = useState({ name: '欢乐桌', smallBlind: 10, bigBlind: 20, maxSeats: 9, initialStack: 2000 });
   const [joinCode, setJoinCode] = useState('');
   const [err, setErr] = useState('');
   const navigate = useNavigate();
@@ -55,7 +55,7 @@ export default function Lobby() {
       {err && <div className="err">{err}</div>}
       <table className="rooms">
         <thead>
-          <tr><th>房间码</th><th>名称</th><th>盲注</th><th>人数</th><th></th></tr>
+          <tr><th>房间码</th><th>名称</th><th>盲注</th><th>初始筹码</th><th>人数</th><th></th></tr>
         </thead>
         <tbody>
           {rooms.map(r => (
@@ -63,6 +63,7 @@ export default function Lobby() {
               <td><code>{r.id}</code></td>
               <td>{r.name}</td>
               <td>{r.smallBlind}/{r.bigBlind}</td>
+              <td>{r.initialStack ?? '—'}</td>
               <td>{r.players}/{r.maxSeats}</td>
               <td><button onClick={() => navigate(`/table/${r.id}`)}>加入</button></td>
             </tr>
@@ -85,6 +86,8 @@ export default function Lobby() {
               onChange={e => setForm({ ...form, bigBlind: +e.target.value })} /></label>
             <label>最大座位 <input type="number" min="2" max="10" value={form.maxSeats}
               onChange={e => setForm({ ...form, maxSeats: +e.target.value })} /></label>
+            <label>初始筹码 <input type="number" min="100" step="100" value={form.initialStack}
+              onChange={e => setForm({ ...form, initialStack: +e.target.value })} /></label>
             <div className="row">
               <button type="button" onClick={() => setCreating(false)}>取消</button>
               <button type="submit">创建</button>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Login from './pages/Login.jsx';
 import Lobby from './pages/Lobby.jsx';
 import Table from './pages/Table.jsx';
@@ -38,11 +38,15 @@ export default function App() {
     navigate('/login');
   };
 
+  const location = useLocation();
+  const isTablePage = location.pathname.startsWith('/table/');
+
   if (loading) return <div className="center">加载中...</div>;
 
   return (
     <div className="app">
-      {user && (
+      {/* 牌桌页面有自己的顶栏，不重复显示全局顶栏 */}
+      {user && !isTablePage && (
         <header className="top-bar">
           <div>🂡 德州扑克</div>
           <div className="user-info">
@@ -62,7 +66,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/lobby" /> : <Login onLogin={setUser} />} />
         <Route path="/lobby" element={user ? <Lobby user={user} /> : <Navigate to="/login" />} />
-        <Route path="/table/:roomId" element={user ? <Table user={user} /> : <Navigate to="/login" />} />
+        <Route path="/table/:roomId" element={user ? <Table user={user} musicOn={musicOn} setMusicOn={setMusicOn} /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to={user ? '/lobby' : '/login'} />} />
       </Routes>
     </div>

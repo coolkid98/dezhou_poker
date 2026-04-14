@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   small_blind INTEGER NOT NULL,
   big_blind INTEGER NOT NULL,
   max_seats INTEGER NOT NULL DEFAULT 6,
+  initial_stack INTEGER NOT NULL DEFAULT 2000,
   created_by INTEGER NOT NULL,
   created_at INTEGER NOT NULL
 );
@@ -52,8 +53,13 @@ export const qInsertUser = db.prepare(
 );
 export const qUpdateChips = db.prepare('UPDATE users SET chips = ? WHERE id = ?');
 
+// 兼容已存在的旧表（无 initial_stack 列）
+try {
+  db.exec('ALTER TABLE rooms ADD COLUMN initial_stack INTEGER NOT NULL DEFAULT 2000');
+} catch {}
+
 export const qInsertRoom = db.prepare(
-  'INSERT INTO rooms (id, name, small_blind, big_blind, max_seats, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  'INSERT INTO rooms (id, name, small_blind, big_blind, max_seats, initial_stack, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
 );
 export const qListRooms = db.prepare('SELECT * FROM rooms ORDER BY created_at DESC LIMIT 50');
 export const qRoomById = db.prepare('SELECT * FROM rooms WHERE id = ?');

@@ -8,6 +8,7 @@ import HandHistory from '../components/HandHistory.jsx';
 import ChipFlight from '../components/ChipFlight.jsx';
 import { seatPosFor } from '../layout.js';
 import { sfx } from '../sfx.js';
+import { music } from '../music.js';
 
 // 行动气泡的中文文案和样式 class
 const ACTION_LABELS = {
@@ -19,7 +20,7 @@ const ACTION_LABELS = {
   blind: { text: '盲注', cls: 'blind' },
 };
 
-export default function Table({ user }) {
+export default function Table({ user, musicOn, setMusicOn }) {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const [state, setState] = useState(null);
@@ -38,6 +39,31 @@ export default function Table({ user }) {
   const socketRef = useRef(null);
   const stateRef = useRef(null);
   stateRef.current = state;
+
+  // 进入牌桌自动开启背景音乐，离开时停止
+  useEffect(() => {
+    let started = false;
+    const tryStart = async () => {
+      if (music.isPlaying()) return;
+      try {
+        await music.start();
+        started = true;
+        setMusicOn?.(true);
+      } catch {}
+    };
+    tryStart();
+    // 若自动播放被浏览器拦截，等第一次用户交互后再试
+    const onInteract = () => {
+      if (!music.isPlaying()) tryStart();
+      document.removeEventListener('pointerdown', onInteract);
+    };
+    document.addEventListener('pointerdown', onInteract);
+    return () => {
+      document.removeEventListener('pointerdown', onInteract);
+      music.stop();
+      setMusicOn?.(false);
+    };
+  }, []);
 
   useEffect(() => {
     const s = getSocket();
@@ -122,18 +148,13 @@ export default function Table({ user }) {
             sfx.deal();
           }, i * 900);
         }
-        // 全部揭示完后再播赢家音 + 保留显示
+        // 全部揭示完后播赢家音，结算浮层保留（等房主开下一手）
         const revealDone = n * 900 + 200;
         setTimeout(() => sfx.win(), revealDone);
-        setTimeout(() => {
-          setHandEnd(null);
-          setRevealIdx(-1);
-        }, revealDone + 2500);
       } else {
-        // 弃牌直接赢：快速显示
+        // 弃牌直接赢：快速显示，保留浮层
         setRevealIdx(-1);
         sfx.win();
-        setTimeout(() => setHandEnd(null), 3200);
       }
     });
     s.on('hand:history', (h) => setHistory(h));
@@ -182,11 +203,26 @@ export default function Table({ user }) {
   return (
     <div className="table-page">
       <div className="table-top-bar">
-        <button onClick={() => navigate('/lobby')}>← 返回大厅</button>
-        <div>
-          房间 <code>{roomId}</code> · 盲注 {state.sb}/{state.bb} ·
-          <span className="phase-tag">{state.phase}</span> · 手#{state.handNo}
+        <button onClick={() => navigate('/lobby')}>← 返回</button>
+        <div className="table-info">
+          <span className="table-info-full">
+            房间 <code>{roomId}</code> · 盲注 {state.sb}/{state.bb} ·
+            <span className="phase-tag">{state.phase}</span> · 手#{state.handNo}
+          </span>
+          <span className="table-info-compact">
+            <code>{roomId}</code> · <span className="phase-tag">{state.phase}</span> · 手#{state.handNo}
+          </span>
         </div>
+        <button
+          className="icon-btn"
+          onClick={async () => {
+            if (music.isPlaying()) { music.stop(); setMusicOn?.(false); }
+            else { await music.start(); setMusicOn?.(true); }
+          }}
+          title={musicOn ? '关闭音乐' : '开启音乐'}
+        >
+          {musicOn ? '🔊' : '🔇'}
+        </button>
       </div>
 
       <div className={`felt ${ordered.length >= 7 ? 'big-table' : ''}`}>
@@ -274,25 +310,32 @@ export default function Table({ user }) {
             )}
             {seatedCount >= 2 && (
               <>
-                <button
-                  className={`ready-btn ${me.ready ? 'ready-on' : ''}`}
-                  onClick={toggleReady}
-                >
-                  {me.ready ? '✅ 已准备（点击取消）' : '点击准备'}
-                </button>
+                {/* 首局需要手动准备；续局 ready 状态保留，不需要重复点 */}
+                {state.handNo === 0 && (
+                  <button
+                    className={`ready-btn ${me.ready ? 'ready-on' : ''}`}
+                    onClick={toggleReady}
+                  >
+                    {me.ready ? '✅ 已准备（点击取消）' : '点击准备'}
+                  </button>
+                )}
                 {isHost && (
                   <button
-                    className="start-btn"
+                    className={`start-btn${state.handNo > 0 && canStart ? ' next-hand' : ''}`}
                     disabled={!canStart}
                     onClick={startGame}
-                    title={canStart ? '开始游戏' : '等待所有玩家准备'}
+                    title={canStart ? (state.handNo > 0 ? '开始下一手' : '开始游戏') : '等待所有玩家准备'}
                   >
-                    🎬 开始游戏 ({readyCount}/{seatedCount})
+                    {state.handNo > 0 ? '▶ 开始下一手' : `🎬 开始游戏 (${readyCount}/${seatedCount})`}
                   </button>
                 )}
                 {!isHost && (
                   <div className="waiting-msg small">
-                    {othersReady ? '⌛ 等待房主开始游戏' : `⌛ 等待其他玩家准备 (${readyCount}/${seatedCount})`}
+                    {state.handNo > 0
+                      ? '⌛ 等待房主开始下一手...'
+                      : othersReady
+                        ? '⌛ 等待房主开始游戏'
+                        : `⌛ 等待其他玩家准备 (${readyCount}/${seatedCount})`}
                   </div>
                 )}
               </>

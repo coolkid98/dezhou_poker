@@ -16,9 +16,9 @@ class RoomManager {
 
   attachIo(io) { this.io = io; }
 
-  createRoom({ name, smallBlind, bigBlind, maxSeats, createdBy }) {
+  createRoom({ name, smallBlind, bigBlind, maxSeats, initialStack, createdBy }) {
     const id = genRoomId();
-    qInsertRoom.run(id, name, smallBlind, bigBlind, maxSeats || 6, createdBy, Date.now());
+    qInsertRoom.run(id, name, smallBlind, bigBlind, maxSeats || 6, initialStack || 2000, createdBy, Date.now());
     return this.loadRoom(id);
   }
 
@@ -51,6 +51,7 @@ class RoomManager {
         smallBlind: r.small_blind,
         bigBlind: r.big_blind,
         maxSeats: r.max_seats,
+        initialStack: r.initial_stack,
         players: live ? live.game.players.length : 0,
       };
     });
@@ -67,7 +68,8 @@ class RoomManager {
     if (!dbUser) return { error: '用户不存在' };
     const existing = room.game.players.find(p => p.id === user.id);
     if (!existing) {
-      const amount = Math.min(buyIn || room.meta.big_blind * 100, dbUser.chips);
+      const defaultStack = room.meta.initial_stack || room.meta.big_blind * 100;
+      const amount = Math.min(buyIn || defaultStack, dbUser.chips);
       if (amount <= 0) return { error: '筹码不足' };
       qUpdateChips.run(dbUser.chips - amount, user.id);
       room.game.addPlayer({

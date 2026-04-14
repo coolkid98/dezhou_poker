@@ -1,11 +1,26 @@
 * { box-sizing: border-box; }
-body, html, #root {
+html {
+  height: 100%; height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+body {
   margin: 0; height: 100%;
   font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
   background: #0b0f14; color: #e6edf3;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+#root {
+  height: 100%; overflow: hidden;
 }
 
-.app { min-height: 100vh; display: flex; flex-direction: column; }
+/* 应用根容器：精确占满视口，不超出 */
+.app {
+  height: 100%;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
 .top-bar {
   display: flex; justify-content: space-between; align-items: center;
   padding: 10px 20px; background: #161b22; border-bottom: 1px solid #30363d;
@@ -44,7 +59,8 @@ form.card a { color: #58a6ff; cursor: pointer; text-align: center; font-size: 13
 .row button { flex: 1; }
 
 /* 大厅 */
-.lobby { padding: 24px; flex: 1; }
+/* lobby 内部允许纵向滚动（房间列表可能很长） */
+.lobby { padding: 24px; flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .lobby-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .lobby-actions { display: flex; gap: 8px; }
 .lobby-actions input {
@@ -67,8 +83,10 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 }
 
 /* ===== 牌桌 ===== */
-.table-page { flex: 1; display: flex; flex-direction: column; height: 100vh; }
+/* table-page 撑满 .app 剩余空间，不用固定 100vh */
+.table-page { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .table-top-bar {
+  flex-shrink: 0;
   padding: 10px 20px; background: #161b22; border-bottom: 1px solid #30363d;
   display: flex; align-items: center; gap: 20px;
 }
@@ -82,13 +100,14 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 }
 
 .felt {
-  flex: 1; position: relative; margin: 20px;
+  flex: 1; min-height: 0; position: relative; margin: 20px;
   background:
     radial-gradient(ellipse at center, #1a7a4e 0%, #0d5c3a 55%, #063520 100%);
   border: 6px solid #3a1f0c;
   box-shadow: inset 0 0 80px rgba(0,0,0,0.6), 0 10px 40px rgba(0,0,0,0.5);
   border-radius: 50% / 40%;
-  min-height: 520px; overflow: hidden;
+  overflow: hidden;
+  touch-action: manipulation; /* 阻止意外的双击缩放和拖拽滚动 */
 }
 
 .board-area {
@@ -236,10 +255,9 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   text-shadow: 0 1px 2px rgba(0,0,0,0.6);
 }
 @keyframes chip-launch {
-  0%   { transform: scale(0.3) rotate(0); opacity: 0.2; }
-  15%  { transform: scale(1.12) rotate(60deg); opacity: 1; }
-  60%  { transform: scale(1) rotate(480deg); }
-  100% { transform: scale(0.85) rotate(900deg); opacity: 0.85; }
+  0%   { transform: scale(0.3); opacity: 0.2; }
+  20%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(0.85); opacity: 0.85; }
 }
 
 /* 行动气泡 */
@@ -323,6 +341,7 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 
 /* ===== 行动栏 ===== */
 .bottom-bar {
+  flex-shrink: 0;
   padding: 16px; background: #161b22; border-top: 1px solid #30363d;
   display: flex; justify-content: center;
 }
@@ -381,6 +400,14 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   background: #30363d; color: #6e7681; cursor: not-allowed;
   box-shadow: none;
 }
+/* 续局"开始下一手"按钮加脉冲提示 */
+.start-btn.next-hand {
+  animation: next-hand-pulse 1.6s ease-in-out infinite;
+}
+@keyframes next-hand-pulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(255, 211, 61, 0.3); }
+  50% { box-shadow: 0 6px 28px rgba(255, 211, 61, 0.7); transform: translateY(-1px); }
+}
 
 .host-crown { font-size: 13px; }
 
@@ -430,4 +457,432 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 @keyframes toast-in {
   from { transform: translate(-50%, -20px); opacity: 0; }
   to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+/* ===== 操作栏双行布局 ===== */
+.action-main {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center;
+}
+.action-raise {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center;
+  width: 100%;
+}
+
+/* 历史面板标题行 */
+.history-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 10px; font-weight: bold; font-size: 14px;
+}
+.history-close {
+  background: none; border: none; color: #8b949e; font-size: 16px;
+  cursor: pointer; padding: 2px 6px; border-radius: 4px;
+}
+.history-close:hover { color: #e6edf3; background: #30363d; }
+.history-backdrop { display: none; }
+
+/* 顶栏紧凑信息（默认隐藏，移动端显示） */
+.table-info-compact { display: none; }
+.table-info-full   { display: inline; }
+
+
+/* 防止游戏区域文字被意外选中 */
+.felt, .action-bar, .action-main, .action-raise { user-select: none; }
+
+/* ===== 触屏设备：去掉 hover 动画，改用 :active ===== */
+@media (hover: none) {
+  .action-bar button:hover    { transform: none; }
+  .ready-btn:hover            { transform: none; }
+  .start-btn:hover:not(:disabled) { transform: none; box-shadow: none; }
+  .lobby-actions button:hover { transform: none; }
+  .lobby button:hover         { transform: none; }
+
+  .action-bar button:active    { transform: scale(0.94); opacity: 0.85; }
+  .ready-btn:active            { transform: scale(0.95); }
+  .start-btn:active:not(:disabled) { transform: scale(0.95); }
+}
+
+/* ===== 移动端：≤ 480px ===== */
+@media (max-width: 480px) {
+
+  /* —— 锁死页面滚动（防止整页上下拖动）—— */
+  /* html/body 的 overflow:hidden + overscroll-behavior:none 已在全局设置 */
+
+  /* app 容器占满动态视口（含地址栏收起/展开） */
+  .app {
+    height: 100dvh;
+  }
+
+  /* table-page 用 flex:1 填充（全局已去掉 height:100vh）*/
+  .table-page {
+    overflow: hidden;
+  }
+
+  /* 底部操作栏：最高不超过视口的 48%，防止内容过多撑破布局 */
+  .bottom-bar {
+    max-height: 48dvh;
+    overflow: hidden;
+    padding: 8px 8px;
+  }
+
+  /* —— 全局 —— */
+  /* 防止 iOS 在 font-size<16px 输入框上自动缩放 */
+  input, select, textarea { font-size: 16px !important; }
+
+  /* —— 顶部导航 —— */
+  .top-bar { padding: 8px 12px; gap: 8px; }
+  .user-info { gap: 8px; font-size: 13px; }
+  .user-info .chips { font-size: 13px; }
+  .user-info button { padding: 5px 10px; font-size: 13px; }
+  .user-info button.icon-btn { padding: 5px 8px; font-size: 14px; }
+
+  /* —— 登录 / 通用表单 —— */
+  form.card {
+    min-width: 0;
+    width: calc(100vw - 32px);
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  /* —— 大厅 —— */
+  .lobby { padding: 12px; }
+  .lobby-header { flex-direction: column; gap: 8px; }
+  .lobby-actions { flex-wrap: wrap; gap: 6px; }
+  .lobby-actions input { width: 90px; }
+  /* 大厅表格隐藏"初始筹码"列（5列太窄） */
+  table.rooms th:nth-child(4),
+  table.rooms td:nth-child(4) { display: none; }
+  table.rooms th, table.rooms td { padding: 8px 6px; font-size: 12px; }
+
+  /* 创建房间 modal 从底部弹出 */
+  .modal { align-items: flex-end; padding: 0; }
+  .modal form.card {
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px 32px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* —— 牌桌顶栏 —— */
+  .table-top-bar { padding: 6px 10px; gap: 8px; font-size: 12px; }
+  .table-top-bar button { padding: 5px 10px; font-size: 12px; }
+  .table-info-full   { display: none; }
+  .table-info-compact { display: inline; font-size: 12px; }
+  .phase-tag { font-size: 10px; padding: 2px 6px; }
+
+  /* —— 赌桌毡面 —— */
+  .felt {
+    margin: 4px;
+    min-height: 0;
+    border-width: 4px;
+    border-radius: 20px;
+  }
+
+  /* —— 底池 & 公共牌 —— */
+  .board-area { top: 43%; }
+  .pot { font-size: 11px; letter-spacing: 1px; }
+  .pot-num { font-size: 16px; }
+  .board { gap: 3px; }
+
+  /* —— 座位（所有桌型） —— */
+  .seat {
+    min-width: 76px;
+    padding: 4px 5px;
+    font-size: 10px;
+    border-radius: 8px;
+    border-width: 1.5px;
+  }
+  .seat-name { font-size: 10px; gap: 3px; flex-wrap: nowrap; }
+  .seat-stack { font-size: 10px; margin-top: 1px; }
+  .host-crown { font-size: 9px; }
+  .btn-chip, .sb-chip, .bb-chip { width: 15px; height: 15px; font-size: 7px; }
+  .tag { font-size: 8px; padding: 1px 3px; border-radius: 3px; }
+  .turn-ring { height: 2px; top: -4px; }
+
+  /* —— 座位内手牌 —— */
+  .seat .card, .seat-cards .card { width: 32px; height: 44px; }
+  .seat .card .r, .seat-cards .card .r { font-size: 12px; }
+  .seat .card .s, .seat-cards .card .s { font-size: 14px; }
+  .seat-cards { min-height: 44px; gap: 2px; margin-bottom: 4px; }
+
+  /* —— 大桌（7-10人）在移动端进一步压缩 —— */
+  .felt.big-table .seat { min-width: 62px; padding: 3px 4px; font-size: 9px; }
+  .felt.big-table .card,
+  .felt.big-table .seat .card,
+  .felt.big-table .seat-cards .card { width: 26px !important; height: 36px !important; }
+  .felt.big-table .card .r,
+  .felt.big-table .seat .card .r { font-size: 10px !important; }
+  .felt.big-table .card .s,
+  .felt.big-table .seat .card .s { font-size: 12px !important; }
+  .felt.big-table .seat-cards { min-height: 36px !important; }
+
+  /* —— 下注筹码标签 —— */
+  .bet-chip { font-size: 9px; padding: 1px 6px; top: -20px; }
+  .chip-dot { width: 8px; height: 8px; }
+
+  /* —— 行动气泡 —— */
+  .action-popup { font-size: 11px; padding: 4px 10px; top: -38px; }
+
+  /* —— 摊牌结算浮层 —— */
+  .hand-end {
+    width: calc(100% - 24px);
+    min-width: 0;
+    left: 50%;
+    top: 50%;
+    padding: 12px 14px;
+    font-size: 12px;
+  }
+  .winner-line { font-size: 12px; }
+  .win-amount { font-size: 15px; }
+  .hand-name { font-size: 10px; }
+
+  /* 等待/观战提示 */
+  .waiting-msg { font-size: 12px; padding: 9px 14px; }
+  .waiting-msg.small { font-size: 11px; }
+
+  /* Ready / Start 按钮 */
+  .lobby-controls { flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .ready-btn { padding: 10px 18px; font-size: 13px; }
+  .start-btn { padding: 10px 18px; font-size: 13px; }
+
+  /* 操作主行：弃牌/跟注/all-in 平均分 */
+  .action-main { width: 100%; gap: 5px; }
+  .action-main .btn-fold,
+  .action-main .btn-check,
+  .action-main .btn-call,
+  .action-main .btn-allin { flex: 1; padding: 10px 4px; font-size: 13px; min-width: 0; }
+  .action-main .timer-pill { font-size: 12px; padding: 5px 8px; white-space: nowrap; }
+
+  /* 加注行：slider 满宽 */
+  .action-raise { flex-direction: column; gap: 5px; }
+  .action-raise .raise-group { width: 100%; }
+  .action-raise .raise-group input[type="range"] { width: 100%; }
+  .action-raise .raise-quick { gap: 4px; }
+  .action-raise .raise-quick button { flex: 1; padding: 5px 4px !important; font-size: 12px !important; }
+  .action-raise .btn-raise { width: 100%; padding: 10px; font-size: 13px; }
+
+  /* —— 历史侧栏 → 底部抽屉 —— */
+  .history { top: auto; bottom: 0; transform: none; right: 0; }
+  .history-toggle {
+    writing-mode: horizontal-tb;
+    border-radius: 8px 0 0 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  /* 打开时铺满全屏（遮罩 + 列表从底部升起） */
+  .history-backdrop {
+    display: block;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 18;
+  }
+  .history.open .history-list {
+    position: fixed;
+    left: 0; right: 0; bottom: 0; top: auto;
+    width: 100% !important;
+    max-height: 60vh;
+    border-radius: 16px 16px 0 0;
+    transform: none;
+    z-index: 19;
+    padding: 14px 16px 28px;
+  }
+
+  /* —— Toast —— */
+  .toast { top: 60px; font-size: 13px; padding: 8px 16px; }
+}
+
+/* ===== 横屏手机（高度不足）===== */
+@media (max-height: 500px) and (max-width: 900px) {
+  .table-top-bar { padding: 4px 10px; }
+  .felt { margin: 2px; border-width: 3px; }
+  .board-area { top: 40%; }
+  .bottom-bar { padding: 4px 8px; }
+  .action-main .btn-fold,
+  .action-main .btn-check,
+  .action-main .btn-call,
+  .action-main .btn-allin { padding: 7px 4px; font-size: 12px; }
+  .action-raise .btn-raise { padding: 7px; }
+  .raise-group input[type="range"] { width: 100%; }
+  .seat { min-width: 68px; font-size: 9px; padding: 3px 4px; }
+  .seat .card, .seat-cards .card { width: 28px; height: 38px; }
+  .seat-cards { min-height: 38px; }
+}
+
+/* ============================================================
+   登录 / 注册 页面
+   ============================================================ */
+
+.auth-page {
+  flex: 1; min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(31, 111, 235, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(137, 87, 229, 0.10) 0%, transparent 55%),
+    radial-gradient(ellipse at 60% 80%, rgba(63, 185, 80, 0.08) 0%, transparent 50%),
+    #0b0f14;
+}
+
+/* 背景装饰花色 */
+.auth-bg-cards {
+  position: absolute; inset: 0; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+  gap: 0;
+}
+.auth-bg-cards span {
+  position: absolute;
+  font-size: clamp(80px, 18vw, 180px);
+  opacity: 0.03;
+  user-select: none;
+}
+.auth-bg-cards span:nth-child(1) { top: 5%;  left: 2%;  transform: rotate(-25deg); color: #fff; }
+.auth-bg-cards span:nth-child(2) { top: 10%; right: 3%; transform: rotate(20deg);  color: #f85149; }
+.auth-bg-cards span:nth-child(3) { bottom: 8%; left: 5%;  transform: rotate(15deg);  color: #f85149; }
+.auth-bg-cards span:nth-child(4) { bottom: 5%; right: 2%; transform: rotate(-18deg); color: #fff; }
+
+/* 中央内容区 */
+.auth-container {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 28px; width: 100%; max-width: 400px; padding: 24px 20px;
+  z-index: 1;
+}
+
+/* Logo */
+.auth-logo { text-align: center; }
+.auth-logo-icon {
+  font-size: 56px; line-height: 1;
+  filter: drop-shadow(0 0 24px rgba(255, 211, 61, 0.5));
+  display: block; margin-bottom: 10px;
+}
+.auth-logo-title {
+  margin: 0; font-size: 28px; font-weight: 900; letter-spacing: 4px;
+  background: linear-gradient(135deg, #ffd33d 0%, #f0a500 50%, #ffd33d 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.auth-logo-sub {
+  margin: 6px 0 0;
+  font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+  color: #8b949e;
+}
+
+/* 表单卡片 */
+.auth-card {
+  width: 100%;
+  background: rgba(22, 27, 34, 0.92);
+  border: 1px solid #30363d;
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  overflow: hidden;
+}
+
+/* Tab 切换 */
+.auth-tabs {
+  display: flex; border-bottom: 1px solid #30363d;
+}
+.auth-tab {
+  flex: 1; padding: 16px;
+  background: none; border: none; cursor: pointer;
+  font-size: 15px; font-weight: 600; color: #8b949e;
+  transition: color 0.2s, background 0.2s;
+  position: relative;
+}
+.auth-tab:hover { color: #e6edf3; background: rgba(255,255,255,0.03); }
+.auth-tab.active {
+  color: #ffd33d;
+  background: rgba(255, 211, 61, 0.05);
+}
+.auth-tab.active::after {
+  content: '';
+  position: absolute; bottom: -1px; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, #ffd33d, #f0a500);
+  border-radius: 2px 2px 0 0;
+}
+
+/* 表单内容 */
+.auth-form {
+  display: flex; flex-direction: column; gap: 16px;
+  padding: 24px 24px 28px;
+}
+
+.auth-field {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.auth-label {
+  font-size: 12px; font-weight: 600; color: #8b949e;
+  letter-spacing: 0.5px; text-transform: uppercase;
+}
+.auth-input {
+  padding: 12px 14px;
+  background: rgba(13, 17, 23, 0.8);
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: #e6edf3;
+  font-size: 15px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+  width: 100%;
+}
+.auth-input::placeholder { color: #484f58; }
+.auth-input:focus {
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+}
+
+/* 错误提示 */
+.auth-err {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 8px;
+  background: rgba(248, 81, 73, 0.12);
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  color: #f85149; font-size: 13px;
+}
+.auth-err-icon {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #f85149; color: white;
+  font-size: 12px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* 提交按钮 */
+.auth-submit {
+  margin-top: 4px;
+  padding: 14px;
+  background: linear-gradient(135deg, #ffd33d 0%, #db6d28 100%);
+  border: none; border-radius: 10px;
+  color: #0d1117; font-size: 16px; font-weight: 800;
+  cursor: pointer; letter-spacing: 1px;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  box-shadow: 0 4px 20px rgba(255, 211, 61, 0.3);
+  width: 100%;
+}
+.auth-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px rgba(255, 211, 61, 0.45);
+}
+.auth-submit:active:not(:disabled) { transform: scale(0.97); }
+.auth-submit.loading, .auth-submit:disabled {
+  opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none;
+}
+
+/* 底部说明 */
+.auth-footer {
+  font-size: 11px; color: #484f58; letter-spacing: 0.5px;
+  margin: 0;
+}
+
+/* ── 移动端调整 ── */
+@media (max-width: 480px) {
+  .auth-container { gap: 20px; padding: 16px 14px; }
+  .auth-logo-icon { font-size: 44px; }
+  .auth-logo-title { font-size: 24px; letter-spacing: 3px; }
+  .auth-form { padding: 18px 18px 22px; gap: 14px; }
+  .auth-tab { padding: 14px; font-size: 14px; }
+  .auth-input { font-size: 16px !important; padding: 12px; }
+  .auth-submit { padding: 13px; font-size: 15px; }
+  .auth-bg-cards span { opacity: 0.025; }
 }

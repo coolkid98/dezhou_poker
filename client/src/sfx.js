@@ -101,10 +101,16 @@ class Sfx {
     }, i * 100));
   }
 
-  // 过牌：轻敲
+  // 过牌：双击叩桌声（低频闷响 × 2，像指节叩桌）
   async check() {
     await this._resume();
-    this._noiseClick({ duration: 0.05, volume: 0.22, freq: 1200 });
+    const knock = () => {
+      // 低频鼓膜振动 + 短暂衰减 = 木质叩击感
+      this._tone({ freq: 180, type: 'triangle', duration: 0.09, volume: 0.45, attack: 0.002, release: 0.07 });
+      this._noiseClick({ duration: 0.07, volume: 0.35, freq: 600 });
+    };
+    knock();
+    setTimeout(knock, 110); // 第二下紧跟
   }
 
   // 弃牌：软绵绵下行
