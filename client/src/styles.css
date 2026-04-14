@@ -16,6 +16,10 @@ body, html, #root {
   padding: 6px 14px; border-radius: 6px; border: 1px solid #30363d;
   background: transparent; color: #e6edf3; cursor: pointer;
 }
+.user-info button.icon-btn {
+  padding: 6px 10px; font-size: 16px;
+}
+.user-info button.icon-btn:hover { background: #21262d; }
 .center { display: flex; align-items: center; justify-content: center; flex: 1; }
 
 /* 通用表单卡片 */

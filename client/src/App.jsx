@@ -5,11 +5,23 @@ import Lobby from './pages/Lobby.jsx';
 import Table from './pages/Table.jsx';
 import { api, clearToken, getToken } from './api.js';
 import { resetSocket } from './socket.js';
+import { music } from './music.js';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [musicOn, setMusicOn] = useState(false);
   const navigate = useNavigate();
+
+  const toggleMusic = async () => {
+    if (musicOn) {
+      music.stop();
+      setMusicOn(false);
+    } else {
+      await music.start();
+      setMusicOn(true);
+    }
+  };
 
   useEffect(() => {
     if (!getToken()) { setLoading(false); return; }
@@ -36,6 +48,13 @@ export default function App() {
           <div className="user-info">
             <span>{user.nickname}</span>
             <span className="chips">💰 {user.chips}</span>
+            <button
+              className="icon-btn"
+              onClick={toggleMusic}
+              title={musicOn ? '关闭背景音乐' : '开启背景音乐'}
+            >
+              {musicOn ? '🔊' : '🔇'}
+            </button>
             <button onClick={logout}>登出</button>
           </div>
         </header>
