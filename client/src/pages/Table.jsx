@@ -110,7 +110,31 @@ export default function Table({ user }) {
     s.on('hand:end', (summary) => {
       setHandEnd(summary);
       setHistory(h => [{ ...summary, endedAt: Date.now() }, ...h].slice(0, 20));
-      setTimeout(() => setHandEnd(null), 5000);
+
+      const n = summary.showdownHoles?.length || 0;
+      if (n > 1) {
+        // 逐个揭示：每张牌翻开间隔 900ms，配音效
+        setRevealIdx(0);
+        sfx.deal();
+        for (let i = 1; i < n; i++) {
+          setTimeout(() => {
+            setRevealIdx(i);
+            sfx.deal();
+          }, i * 900);
+        }
+        // 全部揭示完后再播赢家音 + 保留显示
+        const revealDone = n * 900 + 200;
+        setTimeout(() => sfx.win(), revealDone);
+        setTimeout(() => {
+          setHandEnd(null);
+          setRevealIdx(-1);
+        }, revealDone + 2500);
+      } else {
+        // 弃牌直接赢：快速显示
+        setRevealIdx(-1);
+        sfx.win();
+        setTimeout(() => setHandEnd(null), 3200);
+      }
     });
     s.on('hand:history', (h) => setHistory(h));
     s.on('error', ({ message }) => {
@@ -223,17 +247,23 @@ export default function Table({ user }) {
           );
         })}
 
-        {handEnd && (
-          <div className="hand-end">
-            <h3>本手结算</h3>
-            {handEnd.winners.map((w, i) => (
-              <div key={i} className="winner-line">
-                🏆 <b>{w.nickname}</b> 赢得 <span className="win-amount">{w.amount}</span>
-                <span className="hand-name">({w.handName})</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {handEnd && (() => {
+          const n = handEnd.showdownHoles?.length || 0;
+          // 多人摊牌时，等全部揭示完再显示赢家浮层；否则立刻显示
+          const allRevealed = n <= 1 || revealIdx >= n - 1;
+          if (!allRevealed) return null;
+          return (
+            <div className="hand-end">
+              <h3>本手结算</h3>
+              {handEnd.winners.map((w, i) => (
+                <div key={i} className="winner-line">
+                  🏆 <b>{w.nickname}</b> 赢得 <span className="win-amount">{w.amount}</span>
+                  <span className="hand-name">({w.handName})</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       <div className="bottom-bar">

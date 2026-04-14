@@ -265,6 +265,29 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   100% { opacity: 0; transform: translate(-50%, -34px) scale(0.9); }
 }
 
+/* 摊牌牌型气泡 */
+.handname-popup {
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ffd33d, #db6d28);
+  color: #0d1117;
+  padding: 5px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(255, 211, 61, 0.6);
+  z-index: 6;
+  animation: handname-reveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes handname-reveal {
+  0%   { opacity: 0; transform: translate(-50%, 18px) scale(0.4); }
+  55%  { transform: translate(-50%, -4px) scale(1.15); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
 /* ===== 扑克牌 ===== */
 .card {
   width: 48px; height: 66px; border-radius: 6px;

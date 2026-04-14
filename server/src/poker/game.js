@@ -8,7 +8,7 @@ export class Game {
   constructor({
     roomId, smallBlind, bigBlind, onUpdate, onEnd, onEvent,
     turnTimeoutMs = 30_000,
-    autoStartMs = 3500,
+    autoStartMs = 5500,
   }) {
     this.roomId = roomId;
     this.sb = smallBlind;
@@ -407,6 +407,7 @@ export class Game {
     const winners = [];
 
     const alive = this.players.filter(p => !p.folded && !p.sittingOut);
+    let rankMap = null;
     if (alive.length === 1) {
       const total = pots.reduce((s, p) => s + p.amount, 0);
       alive[0].stack += total;
@@ -418,7 +419,7 @@ export class Game {
         hole: alive[0].hole.map(cardToStr),
       });
     } else {
-      const rankMap = new Map();
+      rankMap = new Map();
       for (const p of alive) rankMap.set(p.id, evaluate7([...p.hole, ...this.board]));
       for (const pot of pots) {
         const contenders = pot.eligible.filter(id => rankMap.has(id));
@@ -452,9 +453,16 @@ export class Game {
       board: this.board.map(cardToStr),
       pot,
       winners,
-      showdownHoles: alive.length >= 2 ? this.players
-        .filter(p => !p.folded)
-        .map(p => ({ playerId: p.id, nickname: p.nickname, hole: p.hole.map(cardToStr) })) : [],
+      showdownHoles: alive.length >= 2 ? alive.map(p => {
+        const r = rankMap?.get(p.id);
+        return {
+          playerId: p.id,
+          nickname: p.nickname,
+          hole: p.hole.map(cardToStr),
+          handName: r?.name,
+          category: r?.category,
+        };
+      }) : [],
       actions: this.actions,
     };
     this.onEnd(summary);

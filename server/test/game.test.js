@@ -7,10 +7,11 @@ import { calculatePots } from '../src/poker/sidePot.js';
 import { evaluate7, compareRanks } from '../src/poker/evaluator.js';
 
 // 创建一个禁用定时器的 Game，便于同步断言
-function makeGame(numPlayers, { stack = 1000, sb = 10, bb = 20 } = {}) {
+function makeGame(numPlayers, { stack = 1000, sb = 10, bb = 20, onEnd } = {}) {
   const g = new Game({
     roomId: 'test', smallBlind: sb, bigBlind: bb,
     turnTimeoutMs: 0, autoStartMs: 0,
+    onEnd,
   });
   for (let i = 1; i <= numPlayers; i++) {
     g.addPlayer({ id: i, nickname: `P${i}`, stack, seat: i - 1 });
@@ -288,6 +289,37 @@ test('publicState: 同桌重复昵称自动加 #id 后缀', () => {
   const st = g.publicState();
   const names = st.players.map(p => p.nickname).sort();
   assert.deepEqual(names, ['alice', 'kid3#10', 'kid3#11']);
+});
+
+test('showdown: summary.showdownHoles 每位存活玩家都带 handName 和 category', () => {
+  let summary = null;
+  const g = makeGame(3, { onEnd: (s) => { summary = s; } });
+  // 全员 check/call 一路打到河牌摊牌
+  g.act(1, { type: 'call' });
+  g.act(2, { type: 'call' });
+  g.act(3, { type: 'check' });
+  // flop
+  g.act(2, { type: 'check' }); g.act(3, { type: 'check' }); g.act(1, { type: 'check' });
+  // turn
+  g.act(2, { type: 'check' }); g.act(3, { type: 'check' }); g.act(1, { type: 'check' });
+  // river
+  g.act(2, { type: 'check' }); g.act(3, { type: 'check' }); g.act(1, { type: 'check' });
+
+  assert.ok(summary, 'onEnd 被触发');
+  assert.equal(summary.showdownHoles.length, 3, '3 人都摊牌');
+  for (const h of summary.showdownHoles) {
+    assert.ok(h.handName, `${h.nickname} 有 handName`);
+    assert.equal(typeof h.category, 'number');
+    assert.ok(h.category >= 0 && h.category <= 9);
+    assert.ok(Array.isArray(h.hole));
+    assert.equal(h.hole.length, 2);
+  }
+  // 至少一位 winner 的 handName 出现在 showdownHoles 中
+  const winnerNames = summary.winners.map(w => w.handName);
+  const showdownNames = summary.showdownHoles.map(h => h.handName);
+  for (const wn of winnerNames) {
+    assert.ok(showdownNames.includes(wn), `赢家牌型 "${wn}" 应在 showdownHoles 中`);
+  }
 });
 
 test('publicState: 昵称无冲突时保持原样', () => {

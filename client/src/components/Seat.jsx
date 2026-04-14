@@ -5,7 +5,7 @@ import { seatPosFor } from '../layout.js';
 export default function Seat({
   player, position, total,
   isSelf, isTurn, isButton, isSB, isBB, isHost, turnDeadline,
-  hole, showdownHole, isWinner, actionPopup,
+  hole, showdownHole, showdownHandName, isWinner, actionPopup,
 }) {
   const [x, y] = seatPosFor(total, position);
 
@@ -79,6 +79,10 @@ export default function Seat({
           {actionPopup.text}
           {actionPopup.amount > 0 && <span className="amt"> {actionPopup.amount}</span>}
         </div>
+      )}
+
+      {showdownHandName && (
+        <div className="handname-popup">{showdownHandName}</div>
       )}
     </div>
   );
