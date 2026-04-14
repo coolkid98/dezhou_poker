@@ -1,5 +1,5 @@
 # ─── 阶段 1：构建前端 ────────────────────────────────────────────
-FROM registry.cn-hangzhou.aliyuncs.com/library/node:20-alpine AS builder
+FROM docker.m.daocloud.io/library/node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ RUN npm --prefix client run build
 # 产物在 /app/client/dist
 
 # ─── 阶段 2：生产运行 ────────────────────────────────────────────
-FROM registry.cn-hangzhou.aliyuncs.com/library/node:20-alpine AS runner
+FROM docker.m.daocloud.io/library/node:20-alpine AS runner
 
 WORKDIR /app
 
