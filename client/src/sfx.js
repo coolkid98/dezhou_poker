@@ -1,0 +1,135 @@
+// 程序化音效 — 不依赖外部文件
+// 每个 API 对应一个游戏事件：chip（下注）、fold、check、deal、win
+
+class Sfx {
+  constructor() {
+    this.ctx = null;
+    this.master = null;
+    this.enabled = true;
+  }
+
+  _ensureCtx() {
+    if (this.ctx) return;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    this.ctx = new Ctx();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.6;
+    this.master.connect(this.ctx.destination);
+  }
+
+  async _resume() {
+    this._ensureCtx();
+    if (this.ctx.state === 'suspended') {
+      try { await this.ctx.resume(); } catch {}
+    }
+  }
+
+  setEnabled(e) { this.enabled = !!e; }
+  isEnabled() { return this.enabled; }
+
+  // 通用：一个简单的包络音
+  _tone({ freq, type = 'sine', duration = 0.15, volume = 0.5, attack = 0.005, release = 0.08, detune = 0 }) {
+    if (!this.enabled || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.value = freq;
+    osc.detune.value = detune;
+
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(volume, now + attack);
+    g.gain.setValueAtTime(volume, now + duration - release);
+    g.gain.linearRampToValueAtTime(0, now + duration);
+
+    osc.connect(g);
+    g.connect(this.master);
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+  }
+
+  // 短噪声脉冲（金属感）
+  _noiseClick({ duration = 0.08, volume = 0.3, freq = 4000 } = {}) {
+    if (!this.enabled || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = freq;
+    bp.Q.value = 2.5;
+
+    const g = this.ctx.createGain();
+    g.gain.value = volume;
+
+    src.connect(bp);
+    bp.connect(g);
+    g.connect(this.master);
+    src.start(now);
+    src.stop(now + duration);
+  }
+
+  // 下注筹码声 —— 两三个金属短音叠加，像筹码叩击桌面
+  async chip() {
+    await this._resume();
+    this._noiseClick({ duration: 0.06, volume: 0.35, freq: 3500 });
+    setTimeout(() => this._noiseClick({ duration: 0.05, volume: 0.28, freq: 4200 }), 40);
+    setTimeout(() => this._noiseClick({ duration: 0.05, volume: 0.22, freq: 3000 }), 85);
+  }
+
+  // 加注：比跟注多一个更高的亮音
+  async raise() {
+    await this._resume();
+    this.chip();
+    this._tone({ freq: 880, type: 'triangle', duration: 0.18, volume: 0.2, attack: 0.01, release: 0.1 });
+  }
+
+  // All-in：戏剧化三音上行
+  async allin() {
+    await this._resume();
+    const notes = [523.25, 659.25, 783.99]; // C5 E5 G5
+    notes.forEach((f, i) => setTimeout(() => {
+      this._tone({ freq: f, type: 'triangle', duration: 0.25, volume: 0.32, attack: 0.005, release: 0.15 });
+      this._noiseClick({ duration: 0.06, volume: 0.3, freq: 3800 });
+    }, i * 100));
+  }
+
+  // 过牌：轻敲
+  async check() {
+    await this._resume();
+    this._noiseClick({ duration: 0.05, volume: 0.22, freq: 1200 });
+  }
+
+  // 弃牌：软绵绵下行
+  async fold() {
+    await this._resume();
+    this._tone({ freq: 440, type: 'sine', duration: 0.12, volume: 0.18, attack: 0.01, release: 0.08 });
+    setTimeout(() => {
+      this._tone({ freq: 330, type: 'sine', duration: 0.14, volume: 0.15, attack: 0.01, release: 0.1 });
+    }, 60);
+  }
+
+  // 发公共牌：纸牌翻转声
+  async deal() {
+    await this._resume();
+    this._noiseClick({ duration: 0.1, volume: 0.28, freq: 2500 });
+  }
+
+  // 赢家音：上行琶音
+  async win() {
+    await this._resume();
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5 E5 G5 C6
+    notes.forEach((f, i) => setTimeout(() => {
+      this._tone({ freq: f, type: 'triangle', duration: 0.35, volume: 0.32, attack: 0.01, release: 0.25 });
+    }, i * 90));
+  }
+}
+
+export const sfx = new Sfx();

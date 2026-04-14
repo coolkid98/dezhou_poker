@@ -5,6 +5,9 @@ import Card from '../components/Card.jsx';
 import Seat from '../components/Seat.jsx';
 import ActionBar from '../components/ActionBar.jsx';
 import HandHistory from '../components/HandHistory.jsx';
+import ChipFlight from '../components/ChipFlight.jsx';
+import { seatPosFor } from '../layout.js';
+import { sfx } from '../sfx.js';
 
 // 行动气泡的中文文案和样式 class
 const ACTION_LABELS = {
@@ -26,9 +29,15 @@ export default function Table({ user }) {
   const [toast, setToast] = useState('');
   // playerId → { action, amount, key }，驱动气泡动画
   const [actionPopups, setActionPopups] = useState({});
+  // 飞行中的筹码 [{ id, playerId, amount }]
+  const [chipFlights, setChipFlights] = useState([]);
   // 每张公共牌是否已入场（用于翻牌/转牌/河牌依次亮起）
   const [boardRevealCount, setBoardRevealCount] = useState(0);
+  // 摊牌逐个揭示的进度：-1 未开始，>=0 已揭示到此索引
+  const [revealIdx, setRevealIdx] = useState(-1);
   const socketRef = useRef(null);
+  const stateRef = useRef(null);
+  stateRef.current = state;
 
   useEffect(() => {
     const s = getSocket();
@@ -39,6 +48,7 @@ export default function Table({ user }) {
     if (s.connected) join();
 
     s.on('state', (st) => {
+      const prevBoardLen = stateRef.current?.board?.length || 0;
       setState(st);
       // 公共牌数量变化时触发逐张亮起
       setBoardRevealCount(prev => {
@@ -49,6 +59,10 @@ export default function Table({ user }) {
         setTimeout(() => setBoardRevealCount(st.board.length), 50);
       } else {
         setBoardRevealCount(0);
+      }
+      // 新公共牌发出时播音效
+      if (st.board.length > prevBoardLen) {
+        sfx.deal();
       }
     });
     s.on('private:cards', ({ hole }) => setHole(hole));
@@ -70,9 +84,26 @@ export default function Table({ user }) {
             return rest;
           });
         }, 1800);
+
+        // 下注类动作：生成一枚筹码动画 + 音效
+        if (ev.amount > 0 && ['call', 'raise', 'allin', 'blind'].includes(ev.kind)) {
+          const flightId = `${Date.now()}_${Math.random()}`;
+          setChipFlights(arr => [
+            ...arr,
+            { id: flightId, playerId: ev.playerId, amount: ev.amount },
+          ]);
+        }
+        // 音效分发
+        if (ev.kind === 'fold') sfx.fold();
+        else if (ev.kind === 'check') sfx.check();
+        else if (ev.kind === 'call' || ev.kind === 'blind') sfx.chip();
+        else if (ev.kind === 'raise') sfx.raise();
+        else if (ev.kind === 'allin') sfx.allin();
       } else if (ev.type === 'hand:start') {
         setHandEnd(null);
         setActionPopups({});
+        setChipFlights([]);
+        setRevealIdx(-1);
       }
     });
 
@@ -150,26 +181,47 @@ export default function Table({ user }) {
         </div>
 
         <div className="seats">
-          {ordered.map((p, i) => (
-            <Seat
-              key={p.id}
-              player={p}
-              position={i}
-              total={ordered.length}
-              isSelf={p.id === user.id}
-              isTurn={state.turnPlayerId === p.id}
-              turnDeadline={state.turnDeadline}
-              isButton={state.buttonPlayerId === p.id}
-              isSB={state.sbPlayerId === p.id}
-              isBB={state.bbPlayerId === p.id}
-              isHost={state.hostId === p.id}
-              hole={p.id === user.id ? hole : null}
-              showdownHole={handEnd?.showdownHoles?.find(h => h.playerId === p.id)?.hole}
-              isWinner={handEnd?.winners?.some(w => w.playerId === p.id)}
-              actionPopup={actionPopups[p.id]}
-            />
-          ))}
+          {ordered.map((p, i) => {
+            const shIdx = handEnd?.showdownHoles?.findIndex(h => h.playerId === p.id) ?? -1;
+            const shRevealed = shIdx >= 0 && shIdx <= revealIdx;
+            const shInfo = shRevealed ? handEnd.showdownHoles[shIdx] : null;
+            return (
+              <Seat
+                key={p.id}
+                player={p}
+                position={i}
+                total={ordered.length}
+                isSelf={p.id === user.id}
+                isTurn={state.turnPlayerId === p.id}
+                turnDeadline={state.turnDeadline}
+                isButton={state.buttonPlayerId === p.id}
+                isSB={state.sbPlayerId === p.id}
+                isBB={state.bbPlayerId === p.id}
+                isHost={state.hostId === p.id}
+                hole={p.id === user.id ? hole : null}
+                showdownHole={shInfo?.hole}
+                showdownHandName={shInfo?.handName}
+                isWinner={handEnd?.winners?.some(w => w.playerId === p.id)}
+                actionPopup={actionPopups[p.id]}
+              />
+            );
+          })}
         </div>
+
+        {chipFlights.map(f => {
+          const idx = ordered.findIndex(p => p.id === f.playerId);
+          if (idx < 0) return null;
+          const [x, y] = seatPosFor(ordered.length, idx);
+          return (
+            <ChipFlight
+              key={f.id}
+              fromX={x}
+              fromY={y}
+              amount={f.amount}
+              onDone={() => setChipFlights(arr => arr.filter(c => c.id !== f.id))}
+            />
+          );
+        })}
 
         {handEnd && (
           <div className="hand-end">

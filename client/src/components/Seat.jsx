@@ -1,28 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import Card from './Card.jsx';
-
-// 自己在底部中央（position 0），其他座位按顺序均匀分布在 felt 外缘
-// 坐标单位 %, [x, y]
-const SEAT_POS = {
-  1: [[50, 85]],
-  2: [[50, 85], [50, 18]],
-  3: [[50, 85], [15, 35], [85, 35]],
-  4: [[50, 85], [12, 55], [50, 15], [88, 55]],
-  5: [[50, 85], [10, 58], [28, 18], [72, 18], [90, 58]],
-  6: [[50, 85], [10, 62], [22, 22], [50, 12], [78, 22], [90, 62]],
-  7: [[50, 85], [12, 78], [5, 45], [25, 15], [75, 15], [95, 45], [88, 78]],
-  8: [[50, 85], [20, 82], [5, 58], [12, 25], [50, 12], [88, 25], [95, 58], [80, 82]],
-  9: [[50, 85], [20, 82], [5, 60], [8, 32], [30, 14], [70, 14], [92, 32], [95, 60], [80, 82]],
-  10: [[50, 85], [22, 83], [5, 65], [5, 40], [18, 18], [50, 10], [82, 18], [95, 40], [95, 65], [78, 83]],
-};
+import { seatPosFor } from '../layout.js';
 
 export default function Seat({
   player, position, total,
   isSelf, isTurn, isButton, isSB, isBB, isHost, turnDeadline,
   hole, showdownHole, isWinner, actionPopup,
 }) {
-  const layout = SEAT_POS[total] || SEAT_POS[6];
-  const [x, y] = layout[position] || [50, 50];
+  const [x, y] = seatPosFor(total, position);
 
   // 倒计时进度条
   const [progress, setProgress] = useState(100);
