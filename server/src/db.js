@@ -45,6 +45,7 @@ CREATE INDEX IF NOT EXISTS idx_hands_room ON hands(room_id, ended_at DESC);
 `);
 
 export const qUserByName = db.prepare('SELECT * FROM users WHERE username = ?');
+export const qUserByNickname = db.prepare('SELECT id FROM users WHERE nickname = ?');
 export const qUserById = db.prepare('SELECT id, username, nickname, chips FROM users WHERE id = ?');
 export const qInsertUser = db.prepare(
   'INSERT INTO users (username, password_hash, nickname, chips, created_at) VALUES (?, ?, ?, ?, ?)'

@@ -239,6 +239,63 @@ test('完整手局：3 人局从 preflop 打到摊牌不报错', () => {
   assert.equal(totalChips, 3000, '筹码守恒');
 });
 
+test('6 人局：盲注顺序与首行动位置', () => {
+  const g = makeGame(6);
+  assert.equal(g.buttonIdx, 0);
+  assert.equal(g.sbIdx, 1);
+  assert.equal(g.bbIdx, 2);
+  assert.equal(g.turnIdx, 3, '6 人局：UTG=BB+1');
+  assert.notEqual(g.turnIdx, g.sbIdx);
+  assert.notEqual(g.turnIdx, g.bbIdx);
+});
+
+test('10 人局：盲注顺序与首行动位置', () => {
+  const g = makeGame(10);
+  assert.equal(g.buttonIdx, 0);
+  assert.equal(g.sbIdx, 1);
+  assert.equal(g.bbIdx, 2);
+  assert.equal(g.turnIdx, 3);
+  // 验证全员发到底牌
+  const withCards = g.players.filter(p => p.hasCards);
+  assert.equal(withCards.length, 10);
+  // 底池只有小盲大盲
+  assert.equal(g.pot === undefined ? g.players.reduce((s, p) => s + p.totalBet, 0) : g.pot, 30);
+});
+
+test('10 人局：一轮全部跟注后进入 flop', () => {
+  const g = makeGame(10);
+  // 从 UTG(P3) 开始依次 call，到 BB 为止；BB 有 option → check
+  const order = [3, 4, 5, 6, 7, 8, 9, 0, 1]; // 9 个玩家依次 call
+  for (const idx of order) {
+    assert.equal(g.turnIdx, idx, `应该轮到 P${idx}`);
+    g.act(idx + 1, { type: 'call' });
+  }
+  // 最后 BB (P2) option
+  assert.equal(g.turnIdx, 2);
+  g.act(3, { type: 'check' });
+  assert.equal(g.phase, 'FLOP');
+  assert.equal(g.board.length, 3);
+});
+
+test('publicState: 同桌重复昵称自动加 #id 后缀', () => {
+  const g = new Game({
+    roomId: 't', smallBlind: 10, bigBlind: 20,
+    turnTimeoutMs: 0, autoStartMs: 0,
+  });
+  g.addPlayer({ id: 10, nickname: 'kid3', stack: 1000, seat: 0 });
+  g.addPlayer({ id: 11, nickname: 'kid3', stack: 1000, seat: 1 });
+  g.addPlayer({ id: 12, nickname: 'alice', stack: 1000, seat: 2 });
+  const st = g.publicState();
+  const names = st.players.map(p => p.nickname).sort();
+  assert.deepEqual(names, ['alice', 'kid3#10', 'kid3#11']);
+});
+
+test('publicState: 昵称无冲突时保持原样', () => {
+  const g = makeGame(3);
+  const st = g.publicState();
+  for (const p of st.players) assert.ok(!p.nickname.includes('#'));
+});
+
 test('只有一人未弃牌时立即结算', () => {
   const g = makeGame(3);
   g.act(1, { type: 'fold' });  // UTG fold

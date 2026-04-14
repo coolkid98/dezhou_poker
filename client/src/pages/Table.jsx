@@ -134,7 +134,7 @@ export default function Table({ user }) {
         </div>
       </div>
 
-      <div className="felt">
+      <div className={`felt ${ordered.length >= 7 ? 'big-table' : ''}`}>
         <div className="board-area">
           <div className="pot">底池 <span className="pot-num">{state.pot}</span></div>
           <div className="board">

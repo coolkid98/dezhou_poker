@@ -1,7 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { qUserByName, qInsertUser, qUserById } from './db.js';
+import { qUserByName, qUserByNickname, qInsertUser, qUserById } from './db.js';
 
 export const JWT_SECRET = process.env.JWT_SECRET || 'dezhou-poker-dev-secret';
 
@@ -12,12 +12,20 @@ authRouter.post('/register', async (req, res) => {
   if (!username || !password || !nickname) {
     return res.status(400).json({ error: '用户名、密码、昵称必填' });
   }
-  if (qUserByName.get(username)) {
+  const uname = String(username).trim();
+  const nick = String(nickname).trim();
+  if (uname.length < 2 || nick.length < 1) {
+    return res.status(400).json({ error: '用户名/昵称格式非法' });
+  }
+  if (qUserByName.get(uname)) {
     return res.status(409).json({ error: '用户名已存在' });
   }
+  if (qUserByNickname.get(nick)) {
+    return res.status(409).json({ error: '昵称已被占用，请换一个' });
+  }
   const hash = await bcrypt.hash(password, 8);
-  const info = qInsertUser.run(username, hash, nickname, 10000, Date.now());
-  const user = { id: info.lastInsertRowid, username, nickname, chips: 10000 };
+  const info = qInsertUser.run(uname, hash, nick, 10000, Date.now());
+  const user = { id: info.lastInsertRowid, username: uname, nickname: nick, chips: 10000 };
   const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, user });
 });

@@ -160,8 +160,62 @@ async function main() {
   expect(bbP.bet === 20, 'BB 投入 20');
   expect(btnP.bet === 0, 'button 未投注');
 
-  // 清理
+  // 清理 3 人场景
   sA.close(); sB.close(); sC.close();
+  await sleep(200);
+
+  console.log('\n7) 注册时相同昵称应被拒绝');
+  const dupSuffix = `_${suffix}`;
+  await http('/api/auth/register', {
+    username: `x1${dupSuffix}`, password: 'p', nickname: `dupNick${dupSuffix}`,
+  });
+  try {
+    await http('/api/auth/register', {
+      username: `x2${dupSuffix}`, password: 'p', nickname: `dupNick${dupSuffix}`,
+    });
+    expect(false, '重复昵称应被拒绝');
+  } catch (e) {
+    expect(/昵称/.test(e.message), `重复昵称被拒绝: ${e.message}`);
+  }
+
+  console.log('\n8) 创建 10 人房间并让 6 人加入测试');
+  // 注册 6 个账号
+  const pls = [];
+  for (let i = 0; i < 6; i++) {
+    pls.push(await registerOrLogin(`p${i}e10`));
+  }
+  const { room: bigRoom } = await http('/api/rooms',
+    { name: '10 人桌', smallBlind: 10, bigBlind: 20, maxSeats: 10 }, pls[0].token);
+  expect(!!bigRoom.id, '10 人房间创建成功');
+
+  const sockets = [];
+  for (const p of pls) sockets.push(await connectSocket(p.token));
+  // 监听 host 的 state 等到所有人加入
+  const bigJoinP = waitForState(sockets[0], st => st.players.length >= 6, 5000);
+  for (const s of sockets) s.emit('room:join', { roomId: bigRoom.id });
+  const bigState = await bigJoinP;
+  expect(bigState.players.length === 6, `6 人都加入 10 人桌 (${bigState.players.length})`);
+
+  // 5 位非房主 ready
+  for (let i = 1; i < 6; i++) sockets[i].emit('game:ready', { ready: true });
+  await waitForState(sockets[0], st =>
+    st.players.filter(p => p.id !== pls[0].user.id).every(p => p.ready), 3000);
+
+  // 房主开始
+  sockets[0].emit('game:start');
+  const bigPlay = await waitForState(sockets[0], st => st.phase === 'PREFLOP', 3000);
+
+  expect(bigPlay.phase === 'PREFLOP', '6 人局开局');
+  expect(bigPlay.players.length === 6, '6 人参与');
+  expect(bigPlay.buttonPlayerId !== bigPlay.sbPlayerId, 'button ≠ SB');
+  expect(bigPlay.turnPlayerId !== bigPlay.sbPlayerId, '首行动 ≠ SB');
+  expect(bigPlay.turnPlayerId !== bigPlay.bbPlayerId, '首行动 ≠ BB');
+  // 6 人局 UTG 是 BB 后一位
+  const bbIdx = bigPlay.players.findIndex(p => p.id === bigPlay.bbPlayerId);
+  const utgIdx = (bbIdx + 1) % bigPlay.players.length;
+  expect(bigPlay.players[utgIdx].id === bigPlay.turnPlayerId, '6 人局首行动 = UTG');
+
+  for (const s of sockets) s.close();
   await sleep(200);
 
   console.log('\n== 结果 ==');

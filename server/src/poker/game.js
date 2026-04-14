@@ -482,6 +482,14 @@ export class Game {
   }
 
   publicState() {
+    // 昵称冲突时自动追加 #id 后缀，兼容历史数据中同桌重名
+    const nickCount = new Map();
+    for (const p of this.players) {
+      nickCount.set(p.nickname, (nickCount.get(p.nickname) || 0) + 1);
+    }
+    const displayName = (p) =>
+      nickCount.get(p.nickname) > 1 ? `${p.nickname}#${p.id}` : p.nickname;
+
     return {
       roomId: this.roomId,
       phase: this.phase,
@@ -499,7 +507,7 @@ export class Game {
       turnDeadline: this.turnDeadline,
       players: this.players.map(p => ({
         id: p.id,
-        nickname: p.nickname,
+        nickname: displayName(p),
         stack: p.stack,
         bet: p.bet,
         totalBet: p.totalBet,

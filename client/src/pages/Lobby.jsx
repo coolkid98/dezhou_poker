@@ -5,7 +5,7 @@ import { api } from '../api.js';
 export default function Lobby() {
   const [rooms, setRooms] = useState([]);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ name: '欢乐桌', smallBlind: 10, bigBlind: 20, maxSeats: 6 });
+  const [form, setForm] = useState({ name: '欢乐桌', smallBlind: 10, bigBlind: 20, maxSeats: 9 });
   const [joinCode, setJoinCode] = useState('');
   const [err, setErr] = useState('');
   const navigate = useNavigate();
@@ -83,7 +83,7 @@ export default function Lobby() {
               onChange={e => setForm({ ...form, smallBlind: +e.target.value })} /></label>
             <label>大盲 <input type="number" value={form.bigBlind}
               onChange={e => setForm({ ...form, bigBlind: +e.target.value })} /></label>
-            <label>最大座位 <input type="number" min="2" max="6" value={form.maxSeats}
+            <label>最大座位 <input type="number" min="2" max="10" value={form.maxSeats}
               onChange={e => setForm({ ...form, maxSeats: +e.target.value })} /></label>
             <div className="row">
               <button type="button" onClick={() => setCreating(false)}>取消</button>

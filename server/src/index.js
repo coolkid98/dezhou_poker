@@ -32,7 +32,7 @@ app.post('/api/rooms', authMiddleware, (req, res) => {
   if (!name) return res.status(400).json({ error: '房间名必填' });
   const sb = Number(smallBlind) || 10;
   const bb = Number(bigBlind) || 20;
-  const seats = Math.min(Math.max(Number(maxSeats) || 6, 2), 6);
+  const seats = Math.min(Math.max(Number(maxSeats) || 9, 2), 10);
   const room = rooms.createRoom({
     name, smallBlind: sb, bigBlind: bb, maxSeats: seats, createdBy: req.user.id,
   });
