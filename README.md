@@ -1,1 +1,133 @@
-# dezhou_poker
+# 德州扑克 Texas Hold'em
+
+基于 React + Node.js + Socket.IO 的多人在线德州扑克游戏。
+
+## 功能特性
+
+- 多人实时对战（最多 10 人桌）
+- 完整德州扑克规则（翻牌/转牌/河牌/摊牌）
+- 房主控制开始每一手
+- 自定义盲注和初始筹码
+- 下注筹码飞行动画 + 摊牌逐个揭示
+- 程序化背景音乐（Jazz Lounge）+ 动作音效
+- 移动端适配
+
+## 技术栈
+
+- **前端**：React 18 + Vite
+- **后端**：Node.js + Express + Socket.IO
+- **数据库**：SQLite（better-sqlite3）
+- **部署**：Docker + Docker Compose
+
+---
+
+## 本地开发
+
+```bash
+# 安装所有依赖
+npm run install:all
+
+# 启动开发服务器（前端 :5173，后端 :3001）
+npm run dev
+```
+
+浏览器打开 `http://localhost:5173`
+
+---
+
+## 生产部署（阿里云 ECS + Docker）
+
+### 1. 服务器安装 Docker
+
+```bash
+# 安装 Docker（Ubuntu）
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-plugin
+sudo systemctl enable --now docker
+```
+
+### 2. 拉取代码
+
+```bash
+git clone https://github.com/coolkid98/dezhou_poker.git
+cd dezhou_poker
+```
+
+### 3. 配置环境变量
+
+```bash
+# 生成随机 JWT 密钥（重要：生产环境务必修改）
+echo "JWT_SECRET=$(openssl rand -hex 32)" > .env
+```
+
+### 4. 构建并启动
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+首次构建约 3-5 分钟。构建完成后服务运行在 **3001 端口**。
+
+### 5. 开放安全组端口
+
+在阿里云控制台 → ECS → 安全组 → 入方向规则，添加：
+
+| 协议 | 端口 | 来源 |
+|------|------|------|
+| TCP  | 3001 | 0.0.0.0/0 |
+
+### 6. 访问
+
+浏览器打开：`http://你的ECS公网IP:3001`
+
+---
+
+## 常用运维命令
+
+```bash
+# 查看容器状态
+docker compose ps
+
+# 查看实时日志
+docker compose logs -f
+
+# 重启服务
+docker compose restart
+
+# 停止服务
+docker compose down
+
+# 更新部署
+git pull
+docker compose build
+docker compose up -d
+```
+
+## 数据持久化
+
+SQLite 数据库通过 Docker Volume `poker-db` 持久化，容器重建后数据不丢失。
+
+```bash
+# 查看数据卷
+docker volume ls
+
+# 备份数据库
+docker run --rm \
+  -v dezhou_poker_poker-db:/data \
+  -v $(pwd):/backup \
+  docker.m.daocloud.io/library/node:20-alpine \
+  cp /data/poker.db /backup/poker_backup.db
+```
+
+---
+
+## 常见问题
+
+**国内服务器拉取镜像超时**
+
+项目已配置使用 DaoCloud 镜像源，一般可正常构建。如仍失败，手动预拉取：
+
+```bash
+docker pull docker.m.daocloud.io/library/node:20-alpine
+```
