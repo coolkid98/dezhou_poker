@@ -58,6 +58,8 @@ cd dezhou_poker
 ```bash
 # 生成随机 JWT 密钥（重要：生产环境务必修改）
 echo "JWT_SECRET=$(openssl rand -hex 32)" > .env
+
+cat .env  # 确认已生成 
 ```
 
 ### 4. 构建并启动
