@@ -8,6 +8,7 @@ import { authRouter, verifyToken } from './auth.js';
 import { rooms } from './rooms.js';
 import { attachSocket } from './socket.js';
 import { qUserById } from './db.js';
+import { initTtsCache } from './tts-cache.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
@@ -16,6 +17,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use('/api/auth', authRouter);
+// 语音文件静态托管
+app.use('/audio', express.static(path.join(__dirname, 'public/audio')));
 
 function authMiddleware(req, res, next) {
   const auth = req.headers.authorization || '';
@@ -70,4 +73,6 @@ attachSocket(io);
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`[server] listening on :${PORT}`);
+  // 启动时预生成 TTS 语音文件（已缓存则跳过）
+  initTtsCache().catch(err => console.warn('[TTS] cache init failed:', err.message));
 });

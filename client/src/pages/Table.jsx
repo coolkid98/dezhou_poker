@@ -8,6 +8,7 @@ import HandHistory from '../components/HandHistory.jsx';
 import ChipFlight from '../components/ChipFlight.jsx';
 import { seatPosFor } from '../layout.js';
 import { sfx } from '../sfx.js';
+import { tts } from '../tts.js';
 import { music } from '../music.js';
 
 // 行动气泡的中文文案和样式 class
@@ -180,6 +181,8 @@ export default function Table({ user, musicOn, setMusicOn }) {
         else if (ev.kind === 'call' || ev.kind === 'blind') sfx.chip();
         else if (ev.kind === 'raise') sfx.raise();
         else if (ev.kind === 'allin') sfx.allin();
+        // 语音播报动作
+        tts.play(ev.kind);
       } else if (ev.type === 'hand:start') {
         setHandEnd(null);
         setActionPopups({});
