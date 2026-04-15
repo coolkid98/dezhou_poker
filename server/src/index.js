@@ -58,12 +58,12 @@ app.get('/api/rooms/:id/history', authMiddleware, (req, res) => {
 
 // 动态 TTS：将文本合成为 MP3 返回给客户端
 app.post('/api/tts', authMiddleware, async (req, res) => {
-  const { text } = req.body || {};
+  const { text, emotion = 'happy', speed = 0.95 } = req.body || {};
   if (!text || typeof text !== 'string' || text.length > 100) {
     return res.status(400).json({ error: '无效文本' });
   }
   try {
-    const buf = await generateTtsBuffer(text);
+    const buf = await generateTtsBuffer(text, { emotion, speed });
     res.set('Content-Type', 'audio/mpeg');
     res.send(buf);
   } catch (err) {

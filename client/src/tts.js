@@ -17,7 +17,7 @@ class Tts {
   }
 
   // 动态合成任意文本并播放（用于获胜播报等）
-  async speak(text) {
+  async speak(text, emotion = 'happy', speed = 0.95) {
     if (!this.enabled) return;
     try {
       const token = getToken();
@@ -27,7 +27,7 @@ class Tts {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, emotion, speed }),
       });
       if (!res.ok) return;
       const blob = await res.blob();
