@@ -1,6 +1,10 @@
 import { verifyToken } from './auth.js';
 import { qUserById } from './db.js';
 import { rooms } from './rooms.js';
+import { monteCarloWinRate } from './poker/montecarlo.js';
+import { getAISuggestion } from './ai.js';
+import { evaluate7 } from './poker/evaluator.js';
+import { cardToStr } from './poker/deck.js';
 
 export function attachSocket(io) {
   rooms.attachIo(io);
@@ -58,6 +62,52 @@ export function attachSocket(io) {
       if (!currentRoomId) return;
       const res = rooms.act(currentRoomId, user.id, action);
       if (res && res.error) socket.emit('error', { message: res.error });
+    });
+
+    socket.on('ai:suggest', async () => {
+      if (!currentRoomId) return;
+      const room = rooms.rooms.get(currentRoomId);
+      if (!room) return;
+
+      const game = room.game;
+      const holeRaw = game.players.find(p => p.id === user.id)?.hole;
+      if (!holeRaw || holeRaw.length < 2) {
+        socket.emit('ai:suggestion', { error: '当前没有手牌' });
+        return;
+      }
+
+      const state = game.publicState();
+      const me = state.players.find(p => p.id === user.id);
+      const numOpponents = state.players.filter(p => p.id !== user.id && !p.folded && !p.sittingOut).length;
+      const toCall = Math.max(0, state.currentBet - (me?.bet || 0));
+
+      // 蒙特卡洛仅作为上下文辅助，不直接推送
+      const { winRate: mcWinRate } = monteCarloWinRate(holeRaw, game.board, Math.max(1, numOpponents));
+
+      // 当前最佳牌型
+      let handName = '';
+      if (game.board.length >= 3) {
+        try { handName = evaluate7([...holeRaw, ...game.board]).name || ''; } catch {}
+      }
+
+      // AI 分析完成后一次性推送三个字段
+      try {
+        const { winRate, action, reason } = await getAISuggestion({
+          hole: holeRaw.map(cardToStr),
+          board: game.board.map(cardToStr),
+          phase: state.phase,
+          pot: state.pot,
+          myStack: me?.stack || 0,
+          myTotalBet: me?.totalBet || 0,
+          toCall,
+          numOpponents: Math.max(1, numOpponents),
+          handName,
+        });
+        socket.emit('ai:suggestion', { winRate, action, reason });
+      } catch (err) {
+        console.error('[AI] error:', err.message);
+        socket.emit('ai:suggestion', { error: 'AI 分析暂时不可用，请稍后重试' });
+      }
     });
 
     socket.on('disconnect', () => {

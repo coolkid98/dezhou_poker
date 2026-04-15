@@ -342,8 +342,8 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 /* ===== 行动栏 ===== */
 .bottom-bar {
   flex-shrink: 0;
-  padding: 16px; background: #161b22; border-top: 1px solid #30363d;
-  display: flex; justify-content: center;
+  padding: 8px 16px 14px; background: #161b22; border-top: 1px solid #30363d;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
 .action-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
 .action-bar.waiting { color: #8b949e; font-style: italic; }
@@ -467,6 +467,76 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center;
   width: 100%;
 }
+
+/* ===== AI 分析面板（三卡片） ===== */
+.ai-bar { width: 100%; max-width: 760px; }
+
+.ai-cards {
+  display: flex; gap: 8px; align-items: stretch;
+}
+
+/* 通用卡片 */
+.ai-card {
+  border-radius: 10px; padding: 8px 12px;
+  display: flex; flex-direction: column; gap: 2px;
+  background: rgba(13,17,23,0.92); border: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+}
+.ai-card-label {
+  font-size: 10px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* 胜率卡 */
+.ai-card-winrate { min-width: 80px; align-items: center; text-align: center; }
+.ai-card-big { font-size: 26px; font-weight: 800; line-height: 1.1; }
+
+/* 建议行动卡 */
+.ai-card-action { flex: 0 0 auto; min-width: 100px; align-items: center; text-align: center; }
+.ai-card-action-text { font-size: 20px; font-weight: 800; line-height: 1.2; margin-top: 4px; }
+
+/* 行动颜色主题 */
+.ai-action-fold   { border-color: #6e7681; background: rgba(110,118,129,0.15); }
+.ai-action-fold .ai-card-action-text { color: #8b949e; }
+.ai-action-check  { border-color: #1f6feb; background: rgba(31,111,235,0.12); }
+.ai-action-check .ai-card-action-text { color: #58a6ff; }
+.ai-action-call   { border-color: #1f6feb; background: rgba(31,111,235,0.12); }
+.ai-action-call .ai-card-action-text  { color: #58a6ff; }
+.ai-action-raise  { border-color: #238636; background: rgba(35,134,54,0.15); }
+.ai-action-raise .ai-card-action-text { color: #3fb950; }
+.ai-action-allin  { border-color: #f85149; background: rgba(248,81,73,0.15); }
+.ai-action-allin .ai-card-action-text { color: #f85149; }
+
+/* 原因卡 */
+.ai-card-reason { flex: 1; justify-content: center; }
+.ai-card-reason-text { font-size: 13px; color: #d1d9e0; line-height: 1.5; margin-top: 4px; }
+
+/* 加载状态 */
+.ai-card-loading { border-color: rgba(124,58,237,0.3); }
+.ai-card-thinking {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: #8b949e; margin-top: 4px;
+}
+.ai-spinner {
+  display: inline-block; width: 12px; height: 12px; flex-shrink: 0;
+  border: 2px solid rgba(192,132,252,0.3); border-top-color: #c084fc;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 错误卡 */
+.ai-card-error {
+  width: 100%; border-radius: 10px; padding: 8px 14px;
+  background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3);
+  color: #f85149; font-size: 13px;
+}
+
+/* 刷新按钮 */
+.ai-refresh-btn {
+  position: absolute; top: 6px; right: 8px;
+  font-size: 15px; color: #8b949e; cursor: pointer;
+  padding: 1px 4px; border-radius: 4px; user-select: none; transition: color 0.15s;
+}
+.ai-refresh-btn:hover { color: #c084fc; background: rgba(124,58,237,0.15); }
 
 /* 历史面板标题行 */
 .history-header {

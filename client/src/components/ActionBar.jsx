@@ -6,14 +6,14 @@ export default function ActionBar({ me, currentBet, minRaise, myTurn, turnDeadli
   const minRaiseTo = Math.min(currentBet + minRaise, me.bet + me.stack);
   const maxRaiseTo = me.bet + me.stack;
   const [raiseTo, setRaiseTo] = useState(minRaiseTo);
-  const [remain, setRemain] = useState(30);
+  const [remain, setRemain] = useState(60);
 
   useEffect(() => {
     setRaiseTo(Math.min(Math.max(minRaiseTo, me.bet), maxRaiseTo));
   }, [minRaiseTo, maxRaiseTo, me.bet]);
 
   useEffect(() => {
-    if (!myTurn || !turnDeadline) { setRemain(30); return; }
+    if (!myTurn || !turnDeadline) { setRemain(60); return; }
     const tick = () => setRemain(Math.max(0, Math.ceil((turnDeadline - Date.now()) / 1000)));
     tick();
     const t = setInterval(tick, 200);

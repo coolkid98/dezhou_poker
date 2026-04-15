@@ -7,7 +7,7 @@ export const PHASES = ['WAITING', 'PREFLOP', 'FLOP', 'TURN', 'RIVER', 'SHOWDOWN'
 export class Game {
   constructor({
     roomId, smallBlind, bigBlind, onUpdate, onEnd, onEvent,
-    turnTimeoutMs = 30_000,
+    turnTimeoutMs = 60_000,
     autoStartMs = 5500,
   }) {
     this.roomId = roomId;

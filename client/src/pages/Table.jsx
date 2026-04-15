@@ -20,6 +20,21 @@ const ACTION_LABELS = {
   blind: { text: '盲注', cls: 'blind' },
 };
 
+function winRateColor(rate) {
+  if (rate >= 65) return '#3fb950';
+  if (rate >= 45) return '#ffd33d';
+  return '#f85149';
+}
+
+function actionCls(action = '') {
+  if (!action) return '';
+  if (action.includes('弃牌')) return 'fold';
+  if (action.includes('All-in') || action.includes('all-in') || action.includes('allin')) return 'allin';
+  if (action.includes('加注')) return 'raise';
+  if (action.includes('跟注')) return 'call';
+  return 'check'; // 过牌 / 其他
+}
+
 export default function Table({ user, musicOn, setMusicOn }) {
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -36,9 +51,18 @@ export default function Table({ user, musicOn, setMusicOn }) {
   const [boardRevealCount, setBoardRevealCount] = useState(0);
   // 摊牌逐个揭示的进度：-1 未开始，>=0 已揭示到此索引
   const [revealIdx, setRevealIdx] = useState(-1);
+
+  // AI 分析状态：{ status: 'idle'|'loading'|'done'|'error', winRate, equity, suggestion, error }
+  const [aiData, setAiData] = useState({ status: 'idle' });
+
   const socketRef = useRef(null);
   const stateRef = useRef(null);
   stateRef.current = state;
+
+  // 记录上一次手牌 key（如 'As-Kh'），用于检测新一手的手牌
+  const prevHoleKeyRef = useRef(null);
+  // 记录当前手牌原始值，供 state 事件里检测公共牌变化时使用
+  const holeRef = useRef(null);
 
   // 进入牌桌自动开启背景音乐，离开时停止
   useEffect(() => {
@@ -90,8 +114,39 @@ export default function Table({ user, musicOn, setMusicOn }) {
       if (st.board.length > prevBoardLen) {
         sfx.deal();
       }
+      // 翻/转/河牌来了，且玩家手上有牌 → 重新请求 AI 分析
+      if (st.board.length > prevBoardLen && holeRef.current?.length === 2) {
+        setAiData({ status: 'loading' });
+        s.emit('ai:suggest');
+      }
     });
-    s.on('private:cards', ({ hole }) => setHole(hole));
+
+    s.on('private:cards', ({ hole: newHole }) => {
+      setHole(newHole);
+      holeRef.current = newHole;
+
+      if (newHole && newHole.length === 2) {
+        const key = newHole.join('-');
+        // 只有手牌变化（新的一手）才触发 AI 分析
+        if (key !== prevHoleKeyRef.current) {
+          prevHoleKeyRef.current = key;
+          setAiData({ status: 'loading' });
+          s.emit('ai:suggest');
+        }
+      } else {
+        // 手局结束，手牌清空 → 重置 key 和 AI 面板
+        prevHoleKeyRef.current = null;
+        setAiData({ status: 'idle' });
+      }
+    });
+
+    s.on('ai:suggestion', (data) => {
+      if (data.error) {
+        setAiData({ status: 'error', error: data.error });
+        return;
+      }
+      setAiData({ status: 'done', winRate: data.winRate, action: data.action, reason: data.reason });
+    });
 
     s.on('game:event', (ev) => {
       if (ev.type === 'action') {
@@ -130,6 +185,8 @@ export default function Table({ user, musicOn, setMusicOn }) {
         setActionPopups({});
         setChipFlights([]);
         setRevealIdx(-1);
+        // 新手开始：清空上轮 AI 结果，等待手牌下发后重新分析
+        setAiData({ status: 'idle' });
       }
     });
 
@@ -167,7 +224,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
       s.emit('room:leave');
       s.off('state'); s.off('private:cards'); s.off('hand:end');
       s.off('hand:history'); s.off('error'); s.off('connect');
-      s.off('game:event');
+      s.off('game:event'); s.off('ai:suggestion');
     };
   }, [roomId]);
 
@@ -199,6 +256,10 @@ export default function Table({ user, musicOn, setMusicOn }) {
   const ordered = myIdx >= 0
     ? [...state.players.slice(myIdx), ...state.players.slice(0, myIdx)]
     : state.players;
+
+  // 是否显示 AI 面板：非等待阶段 + 玩家有手牌 + AI 已触发
+  const showAiPanel = !inWaiting && hole && hole.length === 2 &&
+    (aiData.status === 'loading' || aiData.status === 'done' || aiData.status === 'error');
 
   return (
     <div className="table-page">
@@ -303,6 +364,54 @@ export default function Table({ user, musicOn, setMusicOn }) {
       </div>
 
       <div className="bottom-bar">
+        {/* AI 分析面板：拿到手牌后自动显示，贯穿整手牌 */}
+        {showAiPanel && (
+          <div className="ai-bar">
+            {aiData.status === 'error' ? (
+              <div className="ai-card ai-card-error">⚠ {aiData.error}</div>
+            ) : (
+              <div className="ai-cards">
+                {/* 胜率卡 */}
+                <div className="ai-card ai-card-winrate">
+                  <div className="ai-card-label">胜率</div>
+                  {aiData.status !== 'done' ? (
+                    <div className="ai-card-thinking"><span className="ai-spinner" /></div>
+                  ) : (
+                    <div className="ai-card-big" style={{ color: winRateColor(aiData.winRate) }}>
+                      {aiData.winRate != null ? `${aiData.winRate}%` : '—'}
+                    </div>
+                  )}
+                </div>
+
+                {/* 建议行动卡 */}
+                <div className={`ai-card ai-card-action ${aiData.status === 'done' && aiData.action ? `ai-action-${actionCls(aiData.action)}` : 'ai-card-loading'}`}>
+                  <div className="ai-card-label">建议行动</div>
+                  {aiData.status !== 'done' ? (
+                    <div className="ai-card-thinking"><span className="ai-spinner" /> 分析中</div>
+                  ) : (
+                    <div className="ai-card-action-text">{aiData.action || '—'}</div>
+                  )}
+                </div>
+
+                {/* 原因卡 */}
+                <div className="ai-card ai-card-reason">
+                  <div className="ai-card-label">原因</div>
+                  {aiData.status !== 'done' ? (
+                    <div className="ai-card-thinking"><span className="ai-spinner" /> 分析中</div>
+                  ) : (
+                    <div className="ai-card-reason-text">{aiData.reason || '—'}</div>
+                  )}
+                  <span
+                    className="ai-refresh-btn"
+                    onClick={() => { setAiData({ status: 'loading' }); socketRef.current.emit('ai:suggest'); }}
+                    title="重新分析"
+                  >↻</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {inWaiting && me && (
           <div className="lobby-controls">
             {seatedCount < 2 && (
