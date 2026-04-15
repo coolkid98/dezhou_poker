@@ -57,11 +57,16 @@ cd dezhou_poker
 ### 3. 配置环境变量
 
 ```bash
-# 生成随机 JWT 密钥（重要：生产环境务必修改）
+# 生成随机 JWT 密钥并写入 .env（重要：生产环境务必修改）
 echo "JWT_SECRET=$(openssl rand -hex 32)" > .env
 
-cat .env  # 确认已生成 
+# 追加 MiniMax API Key（AI 分析功能必填）
+echo "MINIMAX_API_KEY=你的key" >> .env
+
+cat .env  # 确认已生成
 ```
+
+> `.env` 文件不会被提交到仓库，每次部署需手动创建。
 
 ### 4. 构建并启动
 
