@@ -1,5 +1,6 @@
 const MINIMAX_API_URL = 'https://api.minimaxi.com/v1/chat/completions';
-const MINIMAX_API_KEY = 'sk-cp-ieTjSoF1mnCHGgLBZrxd5cKV_p1R_ovG3POcd1C8VZFlyxeQrwtPTe3ukwwUUlI_NeerSGx7j2o62zOlUfI3MUCAi6nM8sDZQebCC1LTni_AQyR6FKLGngM';
+const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY;
+if (!MINIMAX_API_KEY) throw new Error('缺少环境变量 MINIMAX_API_KEY，请在 .env 文件中配置');
 
 // 按优先级排列
 const MODELS = ['MiniMax-M2.5-highspeed', 'MiniMax-M2.7', 'MiniMax-M2.5'];

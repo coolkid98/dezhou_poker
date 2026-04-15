@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"      # 直接暴露，或改为 "80:3001" 搭配域名
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
       - PORT=3001
