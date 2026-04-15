@@ -197,6 +197,19 @@ export default function Table({ user, musicOn, setMusicOn }) {
       setHandEnd(summary);
       setHistory(h => [{ ...summary, endedAt: Date.now() }, ...h].slice(0, 20));
 
+      // 获胜播报
+      if (summary.winners?.length > 0) {
+        let text;
+        if (summary.winners.length === 1) {
+          const w = summary.winners[0];
+          text = `${w.nickname}获胜，赢得${w.amount}筹码`;
+        } else {
+          const names = summary.winners.map(w => w.nickname).join('和');
+          text = `${names}平分底池，各得${summary.winners[0].amount}筹码`;
+        }
+        tts.speak(text);
+      }
+
       const n = summary.showdownHoles?.length || 0;
       if (n > 1) {
         // 逐个揭示：每张牌翻开间隔 900ms，配音效

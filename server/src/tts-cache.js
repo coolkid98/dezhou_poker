@@ -16,7 +16,7 @@ const ACTIONS = {
   blind: '盲注',
 };
 
-async function generateAudio(text) {
+export async function generateTtsBuffer(text) {
   const apiKey = process.env.MINIMAX_API_KEY;
   const res = await fetch(MINIMAX_API_URL, {
     method: 'POST',
@@ -49,7 +49,7 @@ export async function initTtsCache() {
     }
     try {
       console.log(`[TTS] generating: ${action} → "${text}"`);
-      const buf = await generateAudio(text);
+      const buf = await generateTtsBuffer(text);
       fs.writeFileSync(filePath, buf);
       console.log(`[TTS] saved: ${action}.mp3 (${buf.length} bytes)`);
     } catch (err) {

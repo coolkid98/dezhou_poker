@@ -8,7 +8,7 @@ import { authRouter, verifyToken } from './auth.js';
 import { rooms } from './rooms.js';
 import { attachSocket } from './socket.js';
 import { qUserById } from './db.js';
-import { initTtsCache } from './tts-cache.js';
+import { initTtsCache, generateTtsBuffer } from './tts-cache.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProd = process.env.NODE_ENV === 'production';
@@ -54,6 +54,22 @@ app.post('/api/rooms', authMiddleware, (req, res) => {
 
 app.get('/api/rooms/:id/history', authMiddleware, (req, res) => {
   res.json({ history: rooms.getHistory(req.params.id) });
+});
+
+// 动态 TTS：将文本合成为 MP3 返回给客户端
+app.post('/api/tts', authMiddleware, async (req, res) => {
+  const { text } = req.body || {};
+  if (!text || typeof text !== 'string' || text.length > 100) {
+    return res.status(400).json({ error: '无效文本' });
+  }
+  try {
+    const buf = await generateTtsBuffer(text);
+    res.set('Content-Type', 'audio/mpeg');
+    res.send(buf);
+  } catch (err) {
+    console.error('[TTS] dynamic generate error:', err.message);
+    res.status(500).json({ error: 'TTS 生成失败' });
+  }
 });
 
 // 生产环境：托管前端静态文件
