@@ -68,6 +68,7 @@ class RoomManager {
     if (!dbUser) return { error: '用户不存在' };
     const existing = room.game.players.find(p => p.id === user.id);
     if (!existing) {
+      // 全新玩家加入
       const defaultStack = room.meta.initial_stack || room.meta.big_blind * 100;
       const amount = Math.min(buyIn || defaultStack, dbUser.chips);
       if (amount <= 0) return { error: '筹码不足' };
@@ -79,7 +80,17 @@ class RoomManager {
         seat: room.game.players.length,
       });
       room.buyIns.set(user.id, amount);
-      // 加入不再自动 ready —— 由玩家显式点击 Ready，房主点击 Start 触发第一手
+    } else if (existing.sittingOut) {
+      // 玩家曾经离开（sittingOut），重新入座需重新买入
+      const defaultStack = room.meta.initial_stack || room.meta.big_blind * 100;
+      const amount = Math.min(buyIn || defaultStack, dbUser.chips);
+      if (amount <= 0) return { error: '筹码不足，无法重新入桌' };
+      qUpdateChips.run(dbUser.chips - amount, user.id);
+      existing.stack = amount;
+      existing.sittingOut = false;
+      // 当局手牌进行中时保持 folded=true（无牌），下一手 startHand 会重新计算
+      existing.ready = false;
+      room.buyIns.set(user.id, amount);
     }
     room.sockets.set(user.id, socket.id);
     socket.join(roomId);
@@ -95,6 +106,7 @@ class RoomManager {
       const dbUser = qUserById.get(userId);
       if (dbUser) qUpdateChips.run(dbUser.chips + p.stack, userId);
       room.game.removePlayer(userId);
+      p.stack = 0; // 清零，避免重新入座时出现幽灵筹码
     }
     room.sockets.delete(userId);
     this.broadcastState(roomId);

@@ -463,8 +463,8 @@ export default function Table({ user, musicOn, setMusicOn }) {
             )}
             {seatedCount >= 2 && (
               <>
-                {/* 首局需要手动准备；续局 ready 状态保留，不需要重复点 */}
-                {state.handNo === 0 && (
+                {/* 首局需要手动准备；续局 ready 状态保留，不需要重复点；重新入桌后 ready=false，也需要重新准备 */}
+                {(state.handNo === 0 || !me.ready) && (
                   <button
                     className={`ready-btn ${me.ready ? 'ready-on' : ''}`}
                     onClick={toggleReady}
