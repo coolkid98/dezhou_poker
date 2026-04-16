@@ -335,8 +335,10 @@ export default function Table({ user, musicOn, setMusicOn }) {
             </div>
           ) : (
             <div className="pot-area">
-              <img src="/pot-chips.png" className="pot-chips-img" alt="" />
-              <div className="pot">底池 <span className="pot-num">{state.pot}</span></div>
+              <div className="pot-display">
+                <span className="chip-dot" />
+                底池 <span className="pot-num">{state.pot}</span>
+              </div>
             </div>
           )}
           <div className="board">
