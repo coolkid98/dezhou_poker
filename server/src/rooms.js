@@ -83,7 +83,7 @@ class RoomManager {
     }
     room.sockets.set(user.id, socket.id);
     socket.join(roomId);
-    return { ok: true, room };
+    return { ok: true, room, isRejoining: !!existing };
   }
 
   leaveRoom(roomId, userId) {
