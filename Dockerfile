@@ -12,22 +12,17 @@ RUN npm --prefix client run build
 # 产物在 /app/client/dist
 
 # ─── 阶段 2：生产运行 ────────────────────────────────────────────
-FROM docker.m.daocloud.io/library/node:20-alpine AS runner
+# 用 slim（glibc）而非 alpine（musl），使 better-sqlite3 能直接用预编译二进制，无需编译
+FROM docker.m.daocloud.io/library/node:20-slim AS runner
 
 WORKDIR /app
 
-# 换用阿里云 Alpine 镜像源，加速国内构建
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
-# 安装编译 better-sqlite3 原生模块所需的工具
-RUN apk add --no-cache python3 make g++
-
 # 只安装后端生产依赖（跳过 devDependencies）
+# 通过 npmmirror 下载 better-sqlite3 预编译二进制，跳过 node-gyp 编译
 COPY server/package*.json ./server/
-RUN npm --prefix server install --omit=dev --registry=https://registry.npmmirror.com
-
-# 编译完成后移除构建工具，减小镜像体积
-RUN apk del python3 make g++
+RUN npm --prefix server install --omit=dev \
+    --registry=https://registry.npmmirror.com \
+    --better-sqlite3-binary-host=https://registry.npmmirror.com/-/binary/better-sqlite3
 
 # 拷贝后端源码 + 前端构建产物
 COPY server/ ./server/
