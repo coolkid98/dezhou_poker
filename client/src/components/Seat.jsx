@@ -23,7 +23,8 @@ export default function Seat({
     return () => clearInterval(t);
   }, [isTurn, turnDeadline]);
 
-  const showCards = isSelf ? hole : showdownHole;
+  // 自己：优先用实时底牌（长度为2时有效），摊牌时 hole 被清空则回退到 showdownHole
+  const showCards = isSelf ? (hole?.length === 2 ? hole : showdownHole) : showdownHole;
   const classes = [
     'seat',
     isTurn && 'turn',
