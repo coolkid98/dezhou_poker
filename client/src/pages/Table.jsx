@@ -117,11 +117,9 @@ export default function Table({ user, musicOn, setMusicOn }) {
       } else {
         setBoardRevealCount(0);
       }
-      // 新公共牌发出时，按批次内位置逐一播音效（翻牌/转牌/河牌统一节奏）
+      // 新公共牌发出时播一次音效（翻牌/转牌/河牌统一：每次发牌只响一声）
       if (st.board.length > prevBoardLen) {
-        for (let j = 0; j < st.board.length - prevBoardLen; j++) {
-          setTimeout(() => sfx.cardFlip(), 50 + j * 150);
-        }
+        setTimeout(() => sfx.cardFlip(), 50);
       }
       // 翻/转/河牌来了，且玩家手上有牌 → 重新请求 AI 分析
       if (st.board.length > prevBoardLen && holeRef.current?.length === 2) {

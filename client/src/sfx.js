@@ -152,7 +152,7 @@ class Sfx {
     bp.Q.value = 1.8;
 
     const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.82, now);
+    g.gain.setValueAtTime(1.1, now);
     g.gain.linearRampToValueAtTime(0, now + 0.12);
 
     src.connect(bp);
@@ -162,7 +162,7 @@ class Sfx {
     src.stop(now + 0.13);
 
     // 叠一个短促低音，增加"落桌"质感
-    this._tone({ freq: 220, type: 'triangle', duration: 0.07, volume: 0.20, attack: 0.002, release: 0.055 });
+    this._tone({ freq: 220, type: 'triangle', duration: 0.07, volume: 0.28, attack: 0.002, release: 0.055 });
   }
 
   // 赢家音：上行琶音
