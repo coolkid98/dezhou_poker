@@ -5,7 +5,7 @@ WORKDIR /app
 
 # 安装前端依赖并构建
 COPY client/package*.json ./client/
-RUN npm --prefix client install
+RUN npm --prefix client install --registry=https://registry.npmmirror.com
 
 COPY client/ ./client/
 RUN npm --prefix client run build
@@ -24,7 +24,7 @@ RUN apk add --no-cache python3 make g++
 
 # 只安装后端生产依赖（跳过 devDependencies）
 COPY server/package*.json ./server/
-RUN npm --prefix server install --omit=dev
+RUN npm --prefix server install --omit=dev --registry=https://registry.npmmirror.com
 
 # 编译完成后移除构建工具，减小镜像体积
 RUN apk del python3 make g++
