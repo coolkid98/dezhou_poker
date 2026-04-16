@@ -35,6 +35,11 @@ export function attachSocket(io) {
       rooms.broadcastState(roomId);
       socket.emit('room:joined', { roomId });
       socket.emit('hand:history', rooms.getHistory(roomId));
+      // 断线重连：补发上一手结算结果
+      const rejoiningRoom = rooms.rooms.get(roomId);
+      if (rejoiningRoom?.lastHandSummary && rejoiningRoom.game.phase === 'WAITING') {
+        setTimeout(() => socket.emit('hand:end', rejoiningRoom.lastHandSummary), 300);
+      }
     });
 
     socket.on('room:leave', () => {

@@ -31,7 +31,7 @@ export default function ActionBar({ me, currentBet, minRaise, myTurn, turnDeadli
     <div className="action-bar">
       {/* 主操作行：计时 + 弃牌/过牌/跟注 + All-in */}
       <div className="action-main">
-        <div className="timer-pill">⏱ {remain}s</div>
+        <div className={`timer-pill${remain <= 10 ? ' urgent' : ''}`}>⏱ {remain}s</div>
         <button className="btn-fold" onClick={() => onAct('fold')}>弃牌</button>
         {canCheck ? (
           <button className="btn-check" onClick={() => onAct('check')}>过牌</button>

@@ -448,6 +448,87 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 .h-board { font-family: monospace; margin: 3px 0; color: #e6edf3; }
 .h-winner { color: #ffd33d; font-size: 12px; }
 
+/* ===== 超时紧急警告 ===== */
+.timer-pill.urgent {
+  color: #f85149;
+  border-color: rgba(248,81,73,0.6);
+  animation: timer-urgent 0.5s ease-in-out infinite;
+}
+@keyframes timer-urgent {
+  0%, 100% { transform: scale(1); box-shadow: none; }
+  50% { transform: scale(1.12); box-shadow: 0 0 10px rgba(248,81,73,0.5); }
+}
+
+/* ===== 边池显示 ===== */
+.pot-breakdown {
+  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.pot-chip {
+  display: flex; flex-direction: column; align-items: center;
+  background: rgba(0,0,0,0.5); border: 1px solid #ffd33d;
+  border-radius: 8px; padding: 4px 12px; min-width: 64px;
+}
+.pot-chip-label { font-size: 10px; color: #8b949e; letter-spacing: 0.5px; }
+.pot-chip-amount { font-size: 16px; font-weight: bold; color: #ffd33d; }
+
+/* ===== 历史回放弹窗 ===== */
+.replay-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.78);
+  display: flex; align-items: center; justify-content: center; z-index: 50;
+}
+.replay-modal {
+  background: #161b22; border: 1px solid #30363d; border-radius: 12px;
+  padding: 20px 24px; width: min(480px, 92vw); max-height: 80vh;
+  overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+}
+.replay-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-weight: bold; font-size: 15px; color: #ffd33d;
+}
+.replay-section-title {
+  display: block; font-size: 11px; color: #8b949e;
+  text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px;
+}
+.replay-board-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.replay-board-row .replay-section-title { margin: 0; }
+.replay-pot-total { margin-left: auto; font-size: 12px; color: #ffd33d; }
+.replay-cards { font-family: monospace; font-size: 14px; color: #e6edf3; }
+.replay-showdown { display: flex; flex-direction: column; gap: 4px; }
+.replay-player-hand {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.04); border-radius: 6px; padding: 5px 10px;
+}
+.replay-player-name { font-size: 13px; font-weight: bold; min-width: 64px; }
+.replay-handname { font-size: 11px; color: #8b949e; margin-left: auto; }
+.replay-winners { display: flex; flex-direction: column; gap: 3px; }
+.replay-winner-line { font-size: 13px; color: #ffd33d; }
+.replay-phases { display: flex; flex-direction: column; gap: 8px; }
+.replay-phase {
+  background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px 12px;
+}
+.replay-phase-name {
+  font-size: 11px; font-weight: bold; color: #58a6ff;
+  text-transform: uppercase; margin-bottom: 6px;
+}
+.replay-phase-board { color: #8b949e; font-family: monospace; font-weight: normal; }
+.replay-action {
+  font-size: 12px; color: #d1d9e0;
+  border-left: 2px solid #30363d; padding-left: 8px; margin: 2px 0;
+}
+.replay-action.fold  { color: #6e7681; border-color: #6e7681; }
+.replay-action.raise { color: #3fb950; border-color: #3fb950; }
+.replay-action.allin { color: #f85149; border-color: #f85149; }
+.replay-action.blind { color: #8957e5; border-color: #8957e5; }
+.h-replay-btn {
+  margin-left: 8px; padding: 1px 6px; font-size: 11px;
+  background: #21262d; border: 1px solid #30363d; border-radius: 4px;
+  color: #58a6ff; cursor: pointer;
+}
+.h-replay-btn:hover { background: #1f6feb; color: white; border-color: #1f6feb; }
+
 /* toast */
 .toast {
   position: fixed; left: 50%; top: 80px; transform: translateX(-50%);

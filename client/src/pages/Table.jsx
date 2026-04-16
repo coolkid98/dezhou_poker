@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSocket } from '../socket.js';
 import Card from '../components/Card.jsx';
@@ -64,6 +64,12 @@ export default function Table({ user, musicOn, setMusicOn }) {
   const prevHoleKeyRef = useRef(null);
   // 记录当前手牌原始值，供 state 事件里检测公共牌变化时使用
   const holeRef = useRef(null);
+  // 记录当前 AI 状态，供 state 事件里读取（避免闭包旧值问题）
+  const aiDataRef = useRef({ status: 'idle' });
+  const updateAiData = useCallback((data) => {
+    aiDataRef.current = data;
+    setAiData(data);
+  }, []);
 
   // 进入牌桌自动开启背景音乐，离开时停止
   useEffect(() => {
@@ -117,8 +123,17 @@ export default function Table({ user, musicOn, setMusicOn }) {
       }
       // 翻/转/河牌来了，且玩家手上有牌 → 重新请求 AI 分析
       if (st.board.length > prevBoardLen && holeRef.current?.length === 2) {
-        setAiData({ status: 'loading' });
+        updateAiData({ status: 'loading' });
         s.emit('ai:suggest');
+      }
+      // 新轮到自己行动（安全兜底）：AI 未分析则立即触发
+      const wasMyTurn = stateRef.current?.turnPlayerId === user.id;
+      if (st.turnPlayerId === user.id && !wasMyTurn && holeRef.current?.length === 2) {
+        const cur = aiDataRef.current;
+        if (cur.status === 'idle' || cur.status === 'error') {
+          updateAiData({ status: 'loading' });
+          s.emit('ai:suggest');
+        }
       }
     });
 
@@ -131,22 +146,22 @@ export default function Table({ user, musicOn, setMusicOn }) {
         // 只有手牌变化（新的一手）才触发 AI 分析
         if (key !== prevHoleKeyRef.current) {
           prevHoleKeyRef.current = key;
-          setAiData({ status: 'loading' });
+          updateAiData({ status: 'loading' });
           s.emit('ai:suggest');
         }
       } else {
         // 手局结束，手牌清空 → 重置 key 和 AI 面板
         prevHoleKeyRef.current = null;
-        setAiData({ status: 'idle' });
+        updateAiData({ status: 'idle' });
       }
     });
 
     s.on('ai:suggestion', (data) => {
       if (data.error) {
-        setAiData({ status: 'error', error: data.error });
+        updateAiData({ status: 'error', error: data.error });
         return;
       }
-      setAiData({ status: 'done', winRate: data.winRate, action: data.action, reason: data.reason });
+      updateAiData({ status: 'done', winRate: data.winRate, action: data.action, reason: data.reason });
     });
 
     s.on('game:event', (ev) => {
@@ -189,7 +204,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
         setChipFlights([]);
         setRevealIdx(-1);
         // 新手开始：清空上轮 AI 结果，等待手牌下发后重新分析
-        setAiData({ status: 'idle' });
+        updateAiData({ status: 'idle' });
       }
     });
 
@@ -197,7 +212,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
       setHandEnd(summary);
       setHistory(h => [{ ...summary, endedAt: Date.now() }, ...h].slice(0, 20));
 
-      // 获胜播报
+      // 获胜播报：提前请求音频，等摊牌动画完成后播放
       if (summary.winners?.length > 0) {
         let text;
         if (summary.winners.length === 1) {
@@ -207,7 +222,9 @@ export default function Table({ user, musicOn, setMusicOn }) {
           const names = summary.winners.map(w => w.nickname).join('和');
           text = `${names}平分底池，各得${summary.winners[0].amount}筹码`;
         }
-        tts.speak(text);
+        const n = summary.showdownHoles?.length || 0;
+        const ttsDelay = n > 1 ? n * 900 + 800 : 600;
+        tts.speakAfter(text, ttsDelay);
       }
 
       const n = summary.showdownHoles?.length || 0;
@@ -304,7 +321,18 @@ export default function Table({ user, musicOn, setMusicOn }) {
 
       <div className={`felt ${ordered.length >= 7 ? 'big-table' : ''}`}>
         <div className="board-area">
-          <div className="pot">底池 <span className="pot-num">{state.pot}</span></div>
+          {state.sidePots ? (
+            <div className="pot-breakdown">
+              {state.sidePots.map((p, i) => (
+                <span key={i} className="pot-chip">
+                  <span className="pot-chip-label">{p.label}</span>
+                  <span className="pot-chip-amount">{p.amount}</span>
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div className="pot">底池 <span className="pot-num">{state.pot}</span></div>
+          )}
           <div className="board">
             {[0, 1, 2, 3, 4].map(i => {
               const code = state.board[i];
@@ -419,7 +447,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
                   )}
                   <span
                     className="ai-refresh-btn"
-                    onClick={() => { setAiData({ status: 'loading' }); socketRef.current.emit('ai:suggest'); }}
+                    onClick={() => { updateAiData({ status: 'loading' }); socketRef.current.emit('ai:suggest'); }}
                     title="重新分析"
                   >↻</span>
                 </div>

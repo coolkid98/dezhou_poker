@@ -154,6 +154,7 @@ class RoomManager {
   handleHandEnd(roomId, summary) {
     const room = this.rooms.get(roomId);
     if (!room) return;
+    room.lastHandSummary = summary; // 断线重连时补发
     // 落库
     qInsertHand.run(
       roomId,

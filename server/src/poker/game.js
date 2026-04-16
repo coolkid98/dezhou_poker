@@ -464,6 +464,7 @@ export class Game {
         };
       }) : [],
       actions: this.actions,
+      playerNames: Object.fromEntries(this.players.map(p => [p.id, p.nickname])),
     };
     this.onEnd(summary);
 
@@ -497,12 +498,31 @@ export class Game {
     const displayName = (p) =>
       nickCount.get(p.nickname) > 1 ? `${p.nickname}#${p.id}` : p.nickname;
 
+    // 实时边池计算（仅在有 All-in 玩家时展示）
+    const hasAllIn = this.players.some(p => p.allIn);
+    let sidePots = null;
+    if (hasAllIn && this.phase !== 'WAITING') {
+      const contributions = this.players.map(p => ({
+        playerId: p.id,
+        amount: p.totalBet,
+        folded: p.folded || p.sittingOut,
+      }));
+      const livePots = calculatePots(contributions);
+      if (livePots.length > 1) {
+        sidePots = livePots.map((p, i) => ({
+          amount: p.amount,
+          label: i === 0 ? '主池' : `边池${i}`,
+        }));
+      }
+    }
+
     return {
       roomId: this.roomId,
       phase: this.phase,
       handNo: this.handNo,
       board: this.board.map(cardToStr),
       pot: this.players.reduce((s, p) => s + p.totalBet, 0),
+      sidePots,
       currentBet: this.currentBet,
       minRaise: this.minRaise,
       sb: this.sb,
