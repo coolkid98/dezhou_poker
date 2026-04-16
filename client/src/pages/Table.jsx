@@ -117,13 +117,10 @@ export default function Table({ user, musicOn, setMusicOn }) {
       } else {
         setBoardRevealCount(0);
       }
-      // 新公共牌发出时，按每张牌的翻开时序逐一播音效
-      // boardRevealCount 在 50ms 后更新，CSS animation-delay = cardIndex * 120ms
+      // 新公共牌发出时，按批次内位置逐一播音效（翻牌/转牌/河牌统一节奏）
       if (st.board.length > prevBoardLen) {
         for (let j = 0; j < st.board.length - prevBoardLen; j++) {
-          const cardIdx = prevBoardLen + j;           // 牌在 board 中的位置
-          const delay   = 50 + cardIdx * 120;         // 对齐 CSS animation-delay
-          setTimeout(() => sfx.cardFlip(), delay);
+          setTimeout(() => sfx.cardFlip(), 50 + j * 150);
         }
       }
       // 翻/转/河牌来了，且玩家手上有牌 → 重新请求 AI 分析
