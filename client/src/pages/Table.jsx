@@ -342,8 +342,10 @@ export default function Table({ user, musicOn, setMusicOn }) {
               const code = state.board[i];
               const revealed = i < boardRevealCount;
               if (!code) return <Card key={i} empty />;
+              // 未翻开时显示牌背，翻开时换 key 触发翻牌动画
+              if (!revealed) return <Card key={`back-${i}`} hidden />;
               return (
-                <Card key={i + code} code={code} revealing={revealed} delay={0} />
+                <Card key={`face-${i}-${code}`} code={code} revealing delay={0} />
               );
             })}
           </div>
