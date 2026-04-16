@@ -50,6 +50,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
   const [chipFlights, setChipFlights] = useState([]);
   // 每张公共牌是否已入场（用于翻牌/转牌/河牌依次亮起）
   const [boardRevealCount, setBoardRevealCount] = useState(0);
+  const [revealBatchStart, setRevealBatchStart] = useState(0); // 当前批次第一张牌的 board 索引
   // 摊牌逐个揭示的进度：-1 未开始，>=0 已揭示到此索引
   const [revealIdx, setRevealIdx] = useState(-1);
 
@@ -117,9 +118,13 @@ export default function Table({ user, musicOn, setMusicOn }) {
       } else {
         setBoardRevealCount(0);
       }
-      // 新公共牌发出时播一次音效（翻牌/转牌/河牌统一：每次发牌只响一声）
+      // 新公共牌发出：记录本批起始索引，并在第一张翻开时播音效
       if (st.board.length > prevBoardLen) {
-        setTimeout(() => sfx.cardFlip(), 50);
+        setRevealBatchStart(prevBoardLen); // 批次起始，用于 Card 的 delay 计算
+        setTimeout(() => sfx.cardFlip(), 50); // 50ms 后 boardRevealCount 更新，第一张立即翻
+      }
+      if (st.board.length === 0) {
+        setRevealBatchStart(0);
       }
       // 翻/转/河牌来了，且玩家手上有牌 → 重新请求 AI 分析
       if (st.board.length > prevBoardLen && holeRef.current?.length === 2) {
@@ -339,7 +344,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
               const revealed = i < boardRevealCount;
               if (!code) return <Card key={i} empty />;
               return (
-                <Card key={i + code} code={code} revealing={revealed} delay={i * 120} />
+                <Card key={i + code} code={code} revealing={revealed} delay={Math.max(0, i - revealBatchStart) * 120} />
               );
             })}
           </div>
