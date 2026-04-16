@@ -16,6 +16,9 @@ FROM docker.m.daocloud.io/library/node:20-alpine AS runner
 
 WORKDIR /app
 
+# 换用阿里云 Alpine 镜像源，加速国内构建
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 # 安装编译 better-sqlite3 原生模块所需的工具
 RUN apk add --no-cache python3 make g++
 
