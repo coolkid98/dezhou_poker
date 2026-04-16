@@ -16,9 +16,15 @@ FROM docker.m.daocloud.io/library/node:20-alpine AS runner
 
 WORKDIR /app
 
+# 安装编译 better-sqlite3 原生模块所需的工具
+RUN apk add --no-cache python3 make g++
+
 # 只安装后端生产依赖（跳过 devDependencies）
 COPY server/package*.json ./server/
 RUN npm --prefix server install --omit=dev
+
+# 编译完成后移除构建工具，减小镜像体积
+RUN apk del python3 make g++
 
 # 拷贝后端源码 + 前端构建产物
 COPY server/ ./server/
