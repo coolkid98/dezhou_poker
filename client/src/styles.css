@@ -334,7 +334,7 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 .card.back {
   background: url('/card-back.png') center/cover no-repeat;
   border: 1.5px solid rgba(255,255,255,0.25);
-  animation: deal-in 0.4s ease-out backwards;
+  animation: deal-in 0.22s ease-out backwards;
 }
 /* 公共牌 5 张背面逐张错开飞入 */
 .board .card.back:nth-child(1) { animation-delay: 0ms; }
@@ -346,15 +346,15 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 .card .s { font-size: 22px; line-height: 1; }
 
 @keyframes deal-in {
-  0% { transform: translateY(-200px) rotate(-30deg); opacity: 0; }
+  0%   { transform: translateY(-160px) rotate(-20deg); opacity: 0; }
   100% { transform: translateY(0) rotate(0); opacity: 1; }
 }
-.card.revealing { animation: flip-in 0.45s ease-out backwards; }
+.card.revealing {
+  animation: flip-in 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94) backwards;
+}
 @keyframes flip-in {
-  /* 模拟从牌背面翻到正面：先压扁（模拟旋转到边缘），再展开 */
-  0%   { transform: scaleX(0.05); filter: brightness(0.4); }
-  45%  { transform: scaleX(0.05); filter: brightness(0.4); }
-  55%  { transform: scaleX(1.06); filter: brightness(1.1); }
+  0%   { transform: scaleX(0);    filter: brightness(0.5); }
+  65%  { transform: scaleX(1.06); filter: brightness(1.05); }
   100% { transform: scaleX(1);    filter: brightness(1); }
 }
 

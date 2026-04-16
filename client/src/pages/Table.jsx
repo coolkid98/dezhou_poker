@@ -114,13 +114,15 @@ export default function Table({ user, musicOn, setMusicOn }) {
         return prev;
       });
       if (st.board.length > 0) {
-        setTimeout(() => setBoardRevealCount(st.board.length), 50);
+        // 250ms：等背面牌入场动画（220ms）完成后再翻牌
+        setTimeout(() => setBoardRevealCount(st.board.length), 250);
       } else {
         setBoardRevealCount(0);
       }
-      // 新公共牌发出时响一声，等行动音效结束后再播，避免互相覆盖
+      // 翻牌音效与翻牌动画同步（250ms 后）
       if (st.board.length > prevBoardLen) {
-        setTimeout(() => sfx.cardFlip(), sfx.safeCardFlipDelay());
+        const flipDelay = Math.max(250, sfx.safeCardFlipDelay());
+        setTimeout(() => sfx.cardFlip(), flipDelay);
       }
       // 翻/转/河牌来了，且玩家手上有牌 → 重新请求 AI 分析
       if (st.board.length > prevBoardLen && holeRef.current?.length === 2) {
