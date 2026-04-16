@@ -36,6 +36,29 @@ function actionCls(action = '') {
   return 'check'; // 过牌 / 其他
 }
 
+// 底池筹码堆：按面额将 pot 拆成最多 8 枚筹码（底 → 顶）
+const POT_CHIP_TIERS = [
+  { v: 5000, c: '#7b1fa2', s: '#9c27b0' }, // 紫
+  { v: 1000, c: '#1565c0', s: '#1976d2' }, // 蓝
+  { v: 500,  c: '#212121', s: '#424242' }, // 黑
+  { v: 100,  c: '#1b5e20', s: '#388e3c' }, // 绿
+  { v: 25,   c: '#b71c1c', s: '#e53935' }, // 红
+  { v: 5,    c: '#e65100', s: '#ff6d00' }, // 橙
+  { v: 1,    c: '#757575', s: '#bdbdbd' }, // 白/灰
+];
+function getPotChips(pot) {
+  if (!pot || pot <= 0) return [];
+  const chips = [];
+  let rem = pot;
+  for (const tier of POT_CHIP_TIERS) {
+    while (rem >= tier.v && chips.length < 8) {
+      chips.push(tier);
+      rem -= tier.v;
+    }
+  }
+  return chips;
+}
+
 export default function Table({ user, musicOn, setMusicOn }) {
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -331,7 +354,20 @@ export default function Table({ user, musicOn, setMusicOn }) {
               ))}
             </div>
           ) : (
-            <div className="pot">底池 <span className="pot-num">{state.pot}</span></div>
+            <div className="pot-area">
+              {state.pot > 0 && (
+                <div className="pot-stack">
+                  {getPotChips(state.pot).map((tier, i) => (
+                    <div
+                      key={i}
+                      className="pot-disc"
+                      style={{ background: `radial-gradient(ellipse at 40% 30%, ${tier.s}, ${tier.c})` }}
+                    />
+                  ))}
+                </div>
+              )}
+              <div className="pot">底池 <span className="pot-num">{state.pot}</span></div>
+            </div>
           )}
           <div className="board">
             {[0, 1, 2, 3, 4].map(i => {
