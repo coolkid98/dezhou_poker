@@ -122,10 +122,47 @@ class Sfx {
     }, 60);
   }
 
-  // 发公共牌：纸牌翻转声
+  // 发公共牌：纸牌翻转声（通用，摊牌时使用）
   async deal() {
     await this._resume();
     this._noiseClick({ duration: 0.1, volume: 0.28, freq: 2500 });
+  }
+
+  // 单张公共牌翻开音效（更清脆的纸牌划过牌毡感）
+  async cardFlip() {
+    await this._resume();
+    if (!this.enabled || !this.ctx) return;
+    const now = this.ctx.currentTime;
+
+    // 高频纸张摩擦 → 快速衰减
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.12);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      const t = i / bufferSize;
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3) * (t < 0.05 ? t / 0.05 : 1);
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+
+    // 带通：保留纸牌感中频
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 3200;
+    bp.Q.value = 1.8;
+
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.55, now);
+    g.gain.linearRampToValueAtTime(0, now + 0.12);
+
+    src.connect(bp);
+    bp.connect(g);
+    g.connect(this.master);
+    src.start(now);
+    src.stop(now + 0.13);
+
+    // 叠一个短促低音，增加"落桌"质感
+    this._tone({ freq: 220, type: 'triangle', duration: 0.07, volume: 0.12, attack: 0.002, release: 0.055 });
   }
 
   // 赢家音：上行琶音
