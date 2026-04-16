@@ -6,3 +6,4 @@ dist
 .env
 .env.*
 POKER.md
+generate-assets.mjs
