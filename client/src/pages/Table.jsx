@@ -117,9 +117,9 @@ export default function Table({ user, musicOn, setMusicOn }) {
       } else {
         setBoardRevealCount(0);
       }
-      // 新公共牌发出时响一声（翻牌/转牌/河牌统一）
+      // 新公共牌发出时响一声，等行动音效结束后再播，避免互相覆盖
       if (st.board.length > prevBoardLen) {
-        setTimeout(() => sfx.cardFlip(), 50);
+        setTimeout(() => sfx.cardFlip(), sfx.safeCardFlipDelay());
       }
       // 翻/转/河牌来了，且玩家手上有牌 → 重新请求 AI 分析
       if (st.board.length > prevBoardLen && holeRef.current?.length === 2) {

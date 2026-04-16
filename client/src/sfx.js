@@ -6,6 +6,13 @@ class Sfx {
     this.ctx = null;
     this.master = null;
     this.enabled = true;
+    this._actionSoundEndsAt = 0; // 上一次行动音效的预计结束时间戳
+  }
+
+  // 供外部查询：行动音效结束后多少 ms 才能播翻牌音
+  safeCardFlipDelay() {
+    const gap = this._actionSoundEndsAt - Date.now();
+    return Math.max(50, gap + 80); // 至少 50ms，结束后再加 80ms 缓冲
   }
 
   _ensureCtx() {
@@ -79,6 +86,7 @@ class Sfx {
   // 下注筹码声 —— 两三个金属短音叠加，像筹码叩击桌面
   async chip() {
     await this._resume();
+    this._actionSoundEndsAt = Date.now() + 160;
     this._noiseClick({ duration: 0.06, volume: 0.35, freq: 3500 });
     setTimeout(() => this._noiseClick({ duration: 0.05, volume: 0.28, freq: 4200 }), 40);
     setTimeout(() => this._noiseClick({ duration: 0.05, volume: 0.22, freq: 3000 }), 85);
@@ -87,6 +95,7 @@ class Sfx {
   // 加注：比跟注多一个更高的亮音
   async raise() {
     await this._resume();
+    this._actionSoundEndsAt = Date.now() + 220;
     this.chip();
     this._tone({ freq: 880, type: 'triangle', duration: 0.18, volume: 0.2, attack: 0.01, release: 0.1 });
   }
@@ -94,6 +103,7 @@ class Sfx {
   // All-in：戏剧化三音上行
   async allin() {
     await this._resume();
+    this._actionSoundEndsAt = Date.now() + 400;
     const notes = [523.25, 659.25, 783.99]; // C5 E5 G5
     notes.forEach((f, i) => setTimeout(() => {
       this._tone({ freq: f, type: 'triangle', duration: 0.25, volume: 0.32, attack: 0.005, release: 0.15 });
@@ -104,18 +114,19 @@ class Sfx {
   // 过牌：双击叩桌声（低频闷响 × 2，像指节叩桌）
   async check() {
     await this._resume();
+    this._actionSoundEndsAt = Date.now() + 230; // 110ms + ~90ms 尾音
     const knock = () => {
-      // 低频鼓膜振动 + 短暂衰减 = 木质叩击感
       this._tone({ freq: 180, type: 'triangle', duration: 0.09, volume: 0.45, attack: 0.002, release: 0.07 });
       this._noiseClick({ duration: 0.07, volume: 0.35, freq: 600 });
     };
     knock();
-    setTimeout(knock, 110); // 第二下紧跟
+    setTimeout(knock, 110);
   }
 
   // 弃牌：软绵绵下行
   async fold() {
     await this._resume();
+    this._actionSoundEndsAt = Date.now() + 220;
     this._tone({ freq: 440, type: 'sine', duration: 0.12, volume: 0.18, attack: 0.01, release: 0.08 });
     setTimeout(() => {
       this._tone({ freq: 330, type: 'sine', duration: 0.14, volume: 0.15, attack: 0.01, release: 0.1 });
