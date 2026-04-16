@@ -64,8 +64,13 @@ class RoomManager {
         !room.game.players.find(p => p.id === user.id)) {
       return { error: '房间已满' };
     }
-    const dbUser = qUserById.get(user.id);
+    let dbUser = qUserById.get(user.id);
     if (!dbUser) return { error: '用户不存在' };
+    // 破产自动补充：账户筹码为 0 时，系统赠送 10000 筹码
+    if (dbUser.chips <= 0) {
+      qUpdateChips.run(10000, dbUser.id);
+      dbUser = qUserById.get(user.id);
+    }
     const existing = room.game.players.find(p => p.id === user.id);
     if (!existing) {
       // 全新玩家加入
