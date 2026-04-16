@@ -36,28 +36,6 @@ function actionCls(action = '') {
   return 'check'; // 过牌 / 其他
 }
 
-// 底池筹码堆：按面额拆分，用 CSS filter 对同一张筹码图上色（底 → 顶）
-const POT_CHIP_TIERS = [
-  { v: 5000, f: 'hue-rotate(280deg) saturate(1.5) brightness(1.1)' }, // 紫
-  { v: 1000, f: 'hue-rotate(200deg) saturate(1.6) brightness(1.1)' }, // 蓝
-  { v: 500,  f: 'saturate(0) brightness(0.55)' },                      // 黑
-  { v: 100,  f: 'hue-rotate(120deg) saturate(1.4) brightness(1.05)' }, // 绿
-  { v: 25,   f: 'none' },                                               // 红（原色）
-  { v: 5,    f: 'hue-rotate(28deg) saturate(1.3)' },                   // 橙
-  { v: 1,    f: 'saturate(0) brightness(2.2)' },                       // 白/灰
-];
-function getPotChips(pot) {
-  if (!pot || pot <= 0) return [];
-  const chips = [];
-  let rem = pot;
-  for (const tier of POT_CHIP_TIERS) {
-    while (rem >= tier.v && chips.length < 8) {
-      chips.push(tier);
-      rem -= tier.v;
-    }
-  }
-  return chips;
-}
 
 export default function Table({ user, musicOn, setMusicOn }) {
   const { roomId } = useParams();
@@ -355,21 +333,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
             </div>
           ) : (
             <div className="pot-area">
-              {state.pot > 0 && (
-                <div className="pot-stack">
-                  {getPotChips(state.pot).map((tier, i) => (
-                    <div
-                      key={i}
-                      className="pot-disc"
-                      style={{
-                        filter: tier.f === 'none' ? undefined : tier.f,
-                        zIndex: i + 1,
-                        animationDelay: `${i * 40}ms`,
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
+              <img src="/pot-chips.png" className="pot-chips-img" alt="" />
               <div className="pot">底池 <span className="pot-num">{state.pot}</span></div>
             </div>
           )}
