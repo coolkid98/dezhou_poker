@@ -36,15 +36,15 @@ function actionCls(action = '') {
   return 'check'; // 过牌 / 其他
 }
 
-// 底池筹码堆：按面额将 pot 拆成最多 8 枚筹码（底 → 顶）
+// 底池筹码堆：按面额拆分，用 CSS filter 对同一张筹码图上色（底 → 顶）
 const POT_CHIP_TIERS = [
-  { v: 5000, c: '#7b1fa2', s: '#9c27b0' }, // 紫
-  { v: 1000, c: '#1565c0', s: '#1976d2' }, // 蓝
-  { v: 500,  c: '#212121', s: '#424242' }, // 黑
-  { v: 100,  c: '#1b5e20', s: '#388e3c' }, // 绿
-  { v: 25,   c: '#b71c1c', s: '#e53935' }, // 红
-  { v: 5,    c: '#e65100', s: '#ff6d00' }, // 橙
-  { v: 1,    c: '#757575', s: '#bdbdbd' }, // 白/灰
+  { v: 5000, f: 'hue-rotate(280deg) saturate(1.5) brightness(1.1)' }, // 紫
+  { v: 1000, f: 'hue-rotate(200deg) saturate(1.6) brightness(1.1)' }, // 蓝
+  { v: 500,  f: 'saturate(0) brightness(0.55)' },                      // 黑
+  { v: 100,  f: 'hue-rotate(120deg) saturate(1.4) brightness(1.05)' }, // 绿
+  { v: 25,   f: 'none' },                                               // 红（原色）
+  { v: 5,    f: 'hue-rotate(28deg) saturate(1.3)' },                   // 橙
+  { v: 1,    f: 'saturate(0) brightness(2.2)' },                       // 白/灰
 ];
 function getPotChips(pot) {
   if (!pot || pot <= 0) return [];
@@ -361,7 +361,11 @@ export default function Table({ user, musicOn, setMusicOn }) {
                     <div
                       key={i}
                       className="pot-disc"
-                      style={{ background: `radial-gradient(ellipse at 40% 30%, ${tier.s}, ${tier.c})` }}
+                      style={{
+                        filter: tier.f === 'none' ? undefined : tier.f,
+                        zIndex: i + 1,
+                        animationDelay: `${i * 40}ms`,
+                      }}
                     />
                   ))}
                 </div>
