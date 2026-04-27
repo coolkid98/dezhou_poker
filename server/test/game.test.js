@@ -210,6 +210,17 @@ test('evaluator: A-2-3-4-5 轮子顺子识别', () => {
   assert.equal(wheel.tiebreakers[0], 5, 'A-5 的最大牌是 5，不是 A');
 });
 
+test('evaluator: evaluate7 返回最佳 5 张牌用于前端高亮', () => {
+  const result = evaluate7([
+    { r: 14, s: 's' }, { r: 14, s: 'h' }, { r: 14, s: 'd' }, { r: 9, s: 'c' }, { r: 9, s: 's' },
+    { r: 2, s: 'd' }, { r: 3, s: 'c' },
+  ]);
+  assert.equal(result.category, 6);
+  assert.equal(result.bestCards.length, 5);
+  const ranks = result.bestCards.map(c => c.r).sort((a, b) => b - a);
+  assert.deepEqual(ranks, [14, 14, 14, 9, 9]);
+});
+
 test('完整手局：3 人局从 preflop 打到摊牌不报错', () => {
   const g = makeGame(3, { stack: 1000 });
   // preflop
@@ -313,6 +324,8 @@ test('showdown: summary.showdownHoles 每位存活玩家都带 handName 和 cate
     assert.ok(h.category >= 0 && h.category <= 9);
     assert.ok(Array.isArray(h.hole));
     assert.equal(h.hole.length, 2);
+    assert.ok(Array.isArray(h.bestCards));
+    assert.equal(h.bestCards.length, 5);
   }
   // 至少一位 winner 的 handName 出现在 showdownHoles 中
   const winnerNames = summary.winners.map(w => w.handName);

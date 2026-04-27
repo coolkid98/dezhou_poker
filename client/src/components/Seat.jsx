@@ -6,7 +6,7 @@ import { getSeatVisibility } from './seatVisibility.js';
 export default function Seat({
   player, position, total,
   isSelf, isTurn, isButton, isSB, isBB, isHost, turnDeadline,
-  hole, showdownHole, showdownHandName, isWinner, actionPopup,
+  hole, showdownHole, showdownHandName, bestCards, isWinner, actionPopup,
 }) {
   const [x, y] = seatPosFor(total, position);
 
@@ -56,7 +56,7 @@ export default function Seat({
 
       <div className={`seat-cards ${shouldAnimateFold ? 'folding' : ''}`}>
         {showCards && showCards.length === 2
-          ? showCards.map((c, i) => <Card key={i} code={c} />)
+          ? showCards.map((c, i) => <Card key={i} code={c} highlighted={bestCards?.includes(c)} />)
           : player.hasCards
           ? <><Card hidden /><Card hidden /></>
           : null}

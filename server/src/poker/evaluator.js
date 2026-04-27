@@ -98,7 +98,7 @@ export function evaluate7(cards) {
   let best = null;
   for (const combo of combinations(cards, 5)) {
     const r = evalFive(combo);
-    if (!best || compareRanks(r, best) > 0) best = r;
+    if (!best || compareRanks(r, best) > 0) best = { ...r, bestCards: combo };
   }
   best.name = CAT_NAME[best.category];
   return best;

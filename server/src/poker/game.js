@@ -462,7 +462,9 @@ export class Game {
           if (existing) existing.amount += got;
           else winners.push({
             playerId: id, nickname: p.nickname, amount: got,
-            handName: best.name, hole: p.hole.map(cardToStr),
+            handName: best.name,
+            hole: p.hole.map(cardToStr),
+            bestCards: best.bestCards?.map(cardToStr) || [],
           });
         });
       }
@@ -482,6 +484,7 @@ export class Game {
           hole: p.hole.map(cardToStr),
           handName: r?.name,
           category: r?.category,
+          bestCards: r?.bestCards?.map(cardToStr) || [],
         };
       }) : [],
       actions: this.actions,

@@ -1,7 +1,7 @@
 import React from 'react';
 
 // code 形如 "As", "Td"；empty 空槽；hidden 背面；revealing 触发翻牌动画
-export default function Card({ code, empty, hidden, revealing, delay = 0 }) {
+export default function Card({ code, empty, hidden, revealing, highlighted, delay = 0 }) {
   if (empty) return <div className="card empty" />;
   if (hidden) return <div className="card back" />;
   if (!code) return <div className="card empty" />;
@@ -9,7 +9,12 @@ export default function Card({ code, empty, hidden, revealing, delay = 0 }) {
   const suit = code.slice(-1);
   const suitMap = { s: '♠', h: '♥', d: '♦', c: '♣' };
   const isRed = suit === 'h' || suit === 'd';
-  const className = `card ${isRed ? 'red' : 'black'}${revealing ? ' revealing' : ''}`;
+  const className = [
+    'card',
+    isRed ? 'red' : 'black',
+    revealing && 'revealing',
+    highlighted && 'highlighted',
+  ].filter(Boolean).join(' ');
   return (
     <div className={className} style={{ animationDelay: `${delay}ms` }}>
       <div className="r">{rank}</div>

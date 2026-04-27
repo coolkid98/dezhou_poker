@@ -308,6 +308,11 @@ export default function Table({ user, musicOn, setMusicOn }) {
   // 是否显示 AI 面板：非等待阶段 + 玩家有手牌 + AI 已触发
   const showAiPanel = !inWaiting && hole && hole.length === 2 &&
     (aiData.status === 'loading' || aiData.status === 'done' || aiData.status === 'error');
+  const highlightedBestCards = new Set(
+    (handEnd?.showdownHoles || [])
+      .filter((_, idx) => revealIdx < 0 || idx <= revealIdx)
+      .flatMap(h => h.bestCards || [])
+  );
 
   return (
     <div className="table-page">
@@ -363,7 +368,15 @@ export default function Table({ user, musicOn, setMusicOn }) {
                 ? <Card key={`back-${i}`} hidden />
                 : <Card key={`empty-${i}`} empty />;
               if (!revealed) return <Card key={`back-${i}`} hidden />;
-              return <Card key={`face-${i}-${code}`} code={code} revealing delay={0} />;
+              return (
+                <Card
+                  key={`face-${i}-${code}`}
+                  code={code}
+                  revealing
+                  highlighted={highlightedBestCards.has(code)}
+                  delay={0}
+                />
+              );
             })}
           </div>
         </div>
@@ -389,6 +402,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
                 hole={p.id === user.id ? hole : null}
                 showdownHole={shInfo?.hole}
                 showdownHandName={shInfo?.handName}
+                bestCards={shInfo?.bestCards}
                 isWinner={handEnd?.winners?.some(w => w.playerId === p.id)}
                 actionPopup={actionPopups[p.id]}
               />
