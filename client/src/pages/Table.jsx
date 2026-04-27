@@ -6,6 +6,7 @@ import Seat from '../components/Seat.jsx';
 import ActionBar from '../components/ActionBar.jsx';
 import HandHistory from '../components/HandHistory.jsx';
 import ChipFlight from '../components/ChipFlight.jsx';
+import PotChipStack from '../components/PotChipStack.jsx';
 import { seatPosFor } from '../layout.js';
 import { sfx } from '../sfx.js';
 import { tts } from '../tts.js';
@@ -50,6 +51,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
   const [actionPopups, setActionPopups] = useState({});
   // 飞行中的筹码 [{ id, playerId, amount }]
   const [chipFlights, setChipFlights] = useState([]);
+  const [potChips, setPotChips] = useState([]);
   // 每张公共牌是否已入场（用于翻牌/转牌/河牌依次亮起）
   const [boardRevealCount, setBoardRevealCount] = useState(0);
   // 摊牌逐个揭示的进度：-1 未开始，>=0 已揭示到此索引
@@ -206,6 +208,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
         setHandEnd(null);
         setActionPopups({});
         setChipFlights([]);
+        setPotChips([]);
         setRevealIdx(-1);
         // 新手开始：清空上轮 AI 结果，等待手牌下发后重新分析
         updateAiData({ status: 'idle' });
@@ -342,19 +345,25 @@ export default function Table({ user, musicOn, setMusicOn }) {
       <div className={`felt ${ordered.length >= 7 ? 'big-table' : ''}`}>
         <div className="board-area">
           {state.sidePots ? (
-            <div className="pot-breakdown">
-              {state.sidePots.map((p, i) => (
-                <span key={i} className="pot-chip">
-                  <span className="pot-chip-label">{p.label}</span>
-                  <span className="pot-chip-amount">{p.amount}</span>
-                </span>
-              ))}
+            <div className="pot-row">
+              <div className="pot-breakdown">
+                {state.sidePots.map((p, i) => (
+                  <span key={i} className="pot-chip">
+                    <span className="pot-chip-label">{p.label}</span>
+                    <span className="pot-chip-amount">{p.amount}</span>
+                  </span>
+                ))}
+              </div>
+              <PotChipStack chips={potChips} />
             </div>
           ) : (
             <div className="pot-area">
-              <div className="pot-display">
-                <span className="chip-dot" />
-                底池 <span className="pot-num">{state.pot}</span>
+              <div className="pot-row">
+                <div className="pot-display">
+                  <span className="chip-dot" />
+                  底池 <span className="pot-num">{state.pot}</span>
+                </div>
+                <PotChipStack chips={potChips} />
               </div>
             </div>
           )}
@@ -420,7 +429,10 @@ export default function Table({ user, musicOn, setMusicOn }) {
               fromX={x}
               fromY={y}
               amount={f.amount}
-              onDone={() => setChipFlights(arr => arr.filter(c => c.id !== f.id))}
+              onDone={() => {
+                setPotChips(arr => [...arr, { id: f.id, amount: f.amount }]);
+                setChipFlights(arr => arr.filter(c => c.id !== f.id));
+              }}
             />
           );
         })}

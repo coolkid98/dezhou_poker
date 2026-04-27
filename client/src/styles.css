@@ -117,6 +117,10 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 .pot-area {
   display: flex; flex-direction: column; align-items: center; margin-bottom: 10px;
 }
+.pot-row {
+  display: flex; align-items: flex-end; justify-content: center; gap: 12px;
+  min-height: 42px; margin-bottom: 10px;
+}
 .pot-display {
   background: #0d1117; border: 1px solid #ffd33d; color: #ffd33d;
   padding: 4px 14px; border-radius: 14px; font-size: 13px; font-weight: bold;
@@ -125,6 +129,28 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   box-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
 .pot-num { font-size: 20px; font-weight: bold; }
+.pot-chip-stack {
+  position: relative; width: 84px; height: 42px; flex: 0 0 84px;
+}
+.pot-stack-chip {
+  position: absolute; width: 30px; height: 30px; border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.1) 28%, transparent 45%),
+    repeating-conic-gradient(from 0deg, var(--chip-edge) 0deg 10deg, var(--chip-base) 10deg 45deg);
+  box-shadow:
+    0 5px 10px rgba(0,0,0,0.45),
+    inset 0 -2px 4px rgba(0,0,0,0.45),
+    inset 0 1px 3px rgba(255,255,255,0.25);
+}
+.pot-stack-chip::before {
+  content: ''; position: absolute; inset: 4px; border-radius: 50%;
+  background: var(--chip-base);
+  box-shadow: inset 0 -1px 2px rgba(0,0,0,0.35), inset 0 1px 2px rgba(255,255,255,0.2);
+}
+.pot-stack-chip::after {
+  content: ''; position: absolute; inset: 7px; border-radius: 50%;
+  border: 1px dashed var(--chip-edge); opacity: 0.55;
+}
 /* 兼容旧的 .pot 引用（side pot 区域） */
 .pot {
   color: #ffd33d; font-size: 14px; font-weight: bold;
@@ -518,7 +544,6 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 /* ===== 边池显示 ===== */
 .pot-breakdown {
   display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  margin-bottom: 10px;
 }
 .pot-chip {
   display: flex; flex-direction: column; align-items: center;

@@ -1,19 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { POT_POS } from '../layout.js';
-
-// 根据金额选择筹码颜色（模仿真实赌场）
-//  < 5  → 白
-//  < 25 → 红
-//  < 100 → 绿
-//  < 500 → 蓝
-//  >= 500 → 黑
-function chipColors(amount) {
-  if (amount >= 500) return { base: '#1a1a1a', edge: '#ffffff', text: '#ffd33d' };
-  if (amount >= 100) return { base: '#1e3a8a', edge: '#ffffff', text: '#ffffff' };
-  if (amount >= 25)  return { base: '#0f7a36', edge: '#ffffff', text: '#ffffff' };
-  if (amount >= 5)   return { base: '#b31b1b', edge: '#ffffff', text: '#ffffff' };
-  return { base: '#f0f0f0', edge: '#555555', text: '#1a1a1a' };
-}
+import { chipColors } from './chipVisuals.js';
 
 export default function ChipFlight({ fromX, fromY, amount, onDone }) {
   const [arrived, setArrived] = useState(false);
