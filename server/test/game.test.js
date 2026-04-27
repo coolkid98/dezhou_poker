@@ -337,3 +337,29 @@ test('只有一人未弃牌时立即结算', () => {
   const p3 = g.players.find(p => p.id === 3);
   assert.equal(p3.stack, 1000 + 10, 'BB 赢了 SB 下的 10'); // BB 自己下的 20 回流
 });
+
+test('addChips: 输光玩家只能在两手之间按房间初始筹码补充', () => {
+  const g = new Game({
+    roomId: 'rebuy', smallBlind: 10, bigBlind: 20,
+    turnTimeoutMs: 0, autoStartMs: 0,
+  });
+  g.addPlayer({ id: 1, nickname: 'P1', stack: 0, seat: 0 });
+  g.players[0].sittingOut = true;
+  g.players[0].ready = true;
+
+  const res = g.addChips(1, 2000);
+  assert.equal(res.ok, true);
+  assert.equal(res.amount, 2000);
+  assert.equal(g.players[0].stack, 2000);
+  assert.equal(g.players[0].sittingOut, false);
+  assert.equal(g.players[0].ready, false, '补充后需要重新准备');
+});
+
+test('addChips: 手牌进行中或仍有筹码时不能补充', () => {
+  const g = makeGame(2);
+  assert.equal(g.phase, 'PREFLOP');
+  assert.equal(g.addChips(1, 2000).error, '只能在两手之间新增筹码');
+
+  g.phase = 'WAITING';
+  assert.equal(g.addChips(1, 2000).error, '当前仍有筹码，无需新增');
+});

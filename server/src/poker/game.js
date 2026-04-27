@@ -88,6 +88,27 @@ export class Game {
     if (p) p.ready = !!ready;
   }
 
+  addChips(playerId, amount) {
+    if (this.phase !== 'WAITING') return { error: '只能在两手之间新增筹码' };
+    const p = this.players.find(x => x.id === playerId);
+    if (!p) return { error: '玩家不在房间' };
+    if (p.stack > 0) return { error: '当前仍有筹码，无需新增' };
+    const chips = Math.floor(Number(amount) || 0);
+    if (chips <= 0) return { error: '新增筹码金额非法' };
+
+    p.stack = chips;
+    p.sittingOut = false;
+    p.ready = false;
+    p.folded = false;
+    p.allIn = false;
+    p.bet = 0;
+    p.totalBet = 0;
+    p.acted = false;
+    p.hasCards = false;
+    p.hole = [];
+    return { ok: true, amount: chips };
+  }
+
   tryStart() {
     if (this.phase !== 'WAITING') return;
     // 清理自动计时器（如果是被自动调用的）

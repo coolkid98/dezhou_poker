@@ -59,9 +59,21 @@ export function attachSocket(io) {
       if (res && res.error) socket.emit('error', { message: res.error });
     });
 
+    socket.on('game:add-chips', () => {
+      if (!currentRoomId) return;
+      const res = rooms.addChips(currentRoomId, user.id);
+      if (res && res.error) socket.emit('error', { message: res.error });
+    });
+
     socket.on('game:start', () => {
       if (!currentRoomId) return;
       const res = rooms.startGame(currentRoomId, user.id);
+      if (res && res.error) socket.emit('error', { message: res.error });
+    });
+
+    socket.on('game:end', () => {
+      if (!currentRoomId) return;
+      const res = rooms.endGame(currentRoomId, user.id);
       if (res && res.error) socket.emit('error', { message: res.error });
     });
 

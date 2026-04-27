@@ -156,6 +156,10 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   50% { box-shadow: 0 0 30px #ffd33d, 0 0 60px rgba(255, 211, 61, 0.7); }
 }
 .seat.folded { opacity: 0.35; filter: grayscale(0.7); }
+.seat.self-folded {
+  border-color: #8b949e;
+  filter: grayscale(0.35);
+}
 .seat.winner {
   border-color: #3fb950; box-shadow: 0 0 30px #3fb950, 0 0 60px rgba(63, 185, 80, 0.6);
   animation: winner-glow 1.2s ease-in-out infinite;
@@ -405,6 +409,14 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   box-shadow: 0 4px 14px rgba(63, 185, 80, 0.4);
 }
 
+.add-chips-btn {
+  padding: 12px 26px; background: #1f6feb; border: 2px solid #58a6ff;
+  color: white; border-radius: 8px; font-size: 15px; font-weight: bold;
+  cursor: pointer; transition: all 0.15s;
+  box-shadow: 0 4px 14px rgba(88, 166, 255, 0.3);
+}
+.add-chips-btn:hover { transform: translateY(-2px); }
+
 .start-btn {
   padding: 12px 30px; background: linear-gradient(135deg, #ffd33d, #db6d28);
   border: none; color: #0d1117; border-radius: 8px; font-size: 16px; font-weight: bold;
@@ -418,6 +430,18 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 .start-btn:disabled {
   background: #30363d; color: #6e7681; cursor: not-allowed;
   box-shadow: none;
+}
+.end-game-btn {
+  padding: 12px 24px; background: #21262d; border: 1px solid #f85149;
+  color: #ffb3ad; border-radius: 8px; font-size: 15px; font-weight: bold;
+  cursor: pointer; transition: all 0.15s;
+}
+.end-game-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: rgba(248,81,73,0.16);
+}
+.end-game-btn:disabled {
+  opacity: 0.45; cursor: not-allowed;
 }
 /* 续局"开始下一手"按钮加脉冲提示 */
 .start-btn.next-hand {
@@ -546,6 +570,63 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   background: #21262d; border: 1px solid #30363d; border-radius: 4px;
   color: #58a6ff; cursor: pointer;
 }
+
+/* ===== 整局结算 ===== */
+.settlement-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.78);
+  display: flex; align-items: center; justify-content: center; z-index: 70;
+}
+.settlement-modal {
+  width: min(620px, 94vw); max-height: 86vh; overflow-y: auto;
+  background: #161b22; border: 1px solid #30363d; border-radius: 12px;
+  padding: 20px 24px; color: #e6edf3;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+}
+.settlement-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.settlement-header h2 { margin: 0; color: #ffd33d; font-size: 20px; }
+.settlement-totals {
+  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;
+  color: #8b949e; font-size: 13px;
+}
+.settlement-totals span {
+  border: 1px solid #30363d; border-radius: 999px; padding: 4px 10px;
+  background: rgba(255,255,255,0.03);
+}
+.settlement-warn { color: #f85149 !important; border-color: #f85149 !important; }
+.settlement-table {
+  width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px;
+}
+.settlement-table th,
+.settlement-table td {
+  border-bottom: 1px solid #30363d; padding: 8px 6px; text-align: right;
+}
+.settlement-table th:first-child,
+.settlement-table td:first-child { text-align: left; }
+.net-win { color: #3fb950; font-weight: bold; }
+.net-loss { color: #f85149; font-weight: bold; }
+.settlement-section-title {
+  font-size: 12px; color: #8b949e; margin-bottom: 8px; font-weight: bold;
+}
+.settlement-transfers {
+  display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px;
+}
+.settlement-transfer {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.04); border-radius: 8px; padding: 8px 10px;
+  font-size: 13px;
+}
+.settlement-transfer span {
+  margin-left: auto; color: #ffd33d; font-weight: bold; font-size: 15px;
+}
+.settlement-transfer.muted { color: #8b949e; }
+.settlement-primary {
+  width: 100%; padding: 11px 16px; background: #238636; border: 1px solid #3fb950;
+  color: white; border-radius: 8px; font-size: 15px; font-weight: bold;
+  cursor: pointer;
+}
 .h-replay-btn:hover { background: #1f6feb; color: white; border-color: #1f6feb; }
 
 /* toast */
@@ -662,12 +743,16 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 @media (hover: none) {
   .action-bar button:hover    { transform: none; }
   .ready-btn:hover            { transform: none; }
+  .add-chips-btn:hover        { transform: none; }
+  .end-game-btn:hover:not(:disabled) { transform: none; }
   .start-btn:hover:not(:disabled) { transform: none; box-shadow: none; }
   .lobby-actions button:hover { transform: none; }
   .lobby button:hover         { transform: none; }
 
   .action-bar button:active    { transform: scale(0.94); opacity: 0.85; }
   .ready-btn:active            { transform: scale(0.95); }
+  .add-chips-btn:active        { transform: scale(0.95); }
+  .end-game-btn:active:not(:disabled) { transform: scale(0.95); }
   .start-btn:active:not(:disabled) { transform: scale(0.95); }
 }
 
@@ -813,6 +898,8 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   /* Ready / Start 按钮 */
   .lobby-controls { flex-wrap: wrap; gap: 8px; justify-content: center; }
   .ready-btn { padding: 10px 18px; font-size: 13px; }
+  .add-chips-btn { padding: 10px 18px; font-size: 13px; }
+  .end-game-btn { padding: 10px 18px; font-size: 13px; }
   .start-btn { padding: 10px 18px; font-size: 13px; }
 
   /* 操作主行：弃牌/跟注/all-in 平均分 */

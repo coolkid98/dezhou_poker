@@ -44,6 +44,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
   const [hole, setHole] = useState(null);
   const [history, setHistory] = useState([]);
   const [handEnd, setHandEnd] = useState(null);
+  const [settlement, setSettlement] = useState(null);
   const [toast, setToast] = useState('');
   // playerId → { action, amount, key }，驱动气泡动画
   const [actionPopups, setActionPopups] = useState({});
@@ -251,6 +252,10 @@ export default function Table({ user, musicOn, setMusicOn }) {
       }
     });
     s.on('hand:history', (h) => setHistory(h));
+    s.on('game:settlement', (summary) => {
+      setSettlement(summary);
+      setHandEnd(null);
+    });
     s.on('error', ({ message }) => {
       setToast(message);
       setTimeout(() => setToast(''), 2500);
@@ -259,7 +264,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
     return () => {
       s.emit('room:leave');
       s.off('state'); s.off('private:cards'); s.off('hand:end');
-      s.off('hand:history'); s.off('error'); s.off('connect');
+      s.off('hand:history'); s.off('game:settlement'); s.off('error'); s.off('connect');
       s.off('game:event'); s.off('ai:suggestion');
     };
   }, [roomId]);
@@ -276,17 +281,24 @@ export default function Table({ user, musicOn, setMusicOn }) {
   const toggleReady = () => {
     socketRef.current.emit('game:ready', { ready: !me?.ready });
   };
+  const addChips = () => {
+    socketRef.current.emit('game:add-chips');
+  };
   const startGame = () => {
     socketRef.current.emit('game:start');
+  };
+  const endGame = () => {
+    socketRef.current.emit('game:end');
   };
 
   const seatedCount = state.players.length;
   const isHost = state.hostId === user.id;
+  const canAddChips = inWaiting && !state.gameEnded && me && me.stack <= 0;
   const othersReady = state.players
     .filter(p => p.id !== state.hostId && p.stack > 0)
     .every(p => p.ready);
   const readyCount = state.players.filter(p => p.ready && p.stack > 0).length;
-  const canStart = isHost && seatedCount >= 2 && othersReady && readyCount >= 1;
+  const canStart = !state.gameEnded && isHost && seatedCount >= 2 && othersReady && readyCount >= 1;
 
   const myIdx = state.players.findIndex(p => p.id === user.id);
   const ordered = myIdx >= 0
@@ -469,13 +481,18 @@ export default function Table({ user, musicOn, setMusicOn }) {
 
         {inWaiting && me && (
           <div className="lobby-controls">
+            {canAddChips && (
+              <button className="add-chips-btn" onClick={addChips}>
+                新增筹码 {state.initialStack ?? state.bb * 100}
+              </button>
+            )}
             {seatedCount < 2 && (
               <div className="waiting-msg">⏳ 等待其他玩家加入房间...</div>
             )}
             {seatedCount >= 2 && (
               <>
                 {/* 首局需要手动准备；续局 ready 状态保留，不需要重复点；重新入桌后 ready=false，也需要重新准备 */}
-                {(state.handNo === 0 || !me.ready) && (
+                {!canAddChips && (state.handNo === 0 || !me.ready) && (
                   <button
                     className={`ready-btn ${me.ready ? 'ready-on' : ''}`}
                     onClick={toggleReady}
@@ -484,14 +501,24 @@ export default function Table({ user, musicOn, setMusicOn }) {
                   </button>
                 )}
                 {isHost && (
-                  <button
-                    className={`start-btn${state.handNo > 0 && canStart ? ' next-hand' : ''}`}
-                    disabled={!canStart}
-                    onClick={startGame}
-                    title={canStart ? (state.handNo > 0 ? '开始下一手' : '开始游戏') : '等待所有玩家准备'}
-                  >
-                    {state.handNo > 0 ? '▶ 开始下一手' : `🎬 开始游戏 (${readyCount}/${seatedCount})`}
-                  </button>
+                  <>
+                    <button
+                      className={`start-btn${state.handNo > 0 && canStart ? ' next-hand' : ''}`}
+                      disabled={!canStart}
+                      onClick={startGame}
+                      title={canStart ? (state.handNo > 0 ? '开始下一手' : '开始游戏') : '等待所有玩家准备'}
+                    >
+                      {state.handNo > 0 ? '▶ 开始下一手' : `🎬 开始游戏 (${readyCount}/${seatedCount})`}
+                    </button>
+                    <button
+                      className="end-game-btn"
+                      disabled={state.gameEnded}
+                      onClick={endGame}
+                      title="结束整局并显示输赢结算"
+                    >
+                      结束游戏并结算
+                    </button>
+                  </>
                 )}
                 {!isHost && (
                   <div className="waiting-msg small">
@@ -522,6 +549,53 @@ export default function Table({ user, musicOn, setMusicOn }) {
       </div>
 
       <HandHistory history={history} />
+
+      {settlement && (
+        <div className="settlement-backdrop">
+          <div className="settlement-modal">
+            <div className="settlement-header">
+              <h2>整局结算</h2>
+              <button className="history-close" onClick={() => setSettlement(null)}>×</button>
+            </div>
+            <div className="settlement-totals">
+              <span>总买入 {settlement.totalBuyIn}</span>
+              <span>最终桌面 {settlement.totalFinal}</span>
+              {!settlement.balanced && <span className="settlement-warn">账目未平</span>}
+            </div>
+            <table className="settlement-table">
+              <thead>
+                <tr><th>玩家</th><th>买入</th><th>最终</th><th>输赢</th></tr>
+              </thead>
+              <tbody>
+                {[...settlement.players].sort((a, b) => b.net - a.net).map(p => (
+                  <tr key={p.playerId}>
+                    <td>{p.nickname}</td>
+                    <td>{p.buyIn}</td>
+                    <td>{p.finalStack}</td>
+                    <td className={p.net > 0 ? 'net-win' : p.net < 0 ? 'net-loss' : ''}>
+                      {p.net > 0 ? `+${p.net}` : p.net}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="settlement-section-title">转账情况</div>
+            <div className="settlement-transfers">
+              {settlement.transfers.length > 0 ? settlement.transfers.map((t, i) => (
+                <div key={i} className="settlement-transfer">
+                  <b>{t.fromNickname}</b> 转给 <b>{t.toNickname}</b>
+                  <span>{t.amount}</span>
+                </div>
+              )) : (
+                <div className="settlement-transfer muted">无人输赢，暂不需要转账</div>
+              )}
+            </div>
+            <button className="settlement-primary" onClick={() => navigate('/lobby')}>
+              返回大厅
+            </button>
+          </div>
+        </div>
+      )}
 
       {toast && <div className="toast">{toast}</div>}
     </div>

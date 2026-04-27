@@ -1,5 +1,6 @@
 import { customAlphabet } from 'nanoid';
 import { Game } from './poker/game.js';
+import { createSettlement } from './settlement.js';
 import {
   qInsertRoom, qListRooms, qRoomById,
   qInsertHand, qHandsByRoom, qUpdateChips, qUserById,
@@ -36,7 +37,7 @@ class RoomManager {
         if (this.io) this.io.to(roomId).emit('game:event', event);
       },
     });
-    const room = { meta, game, sockets: new Map(), buyIns: new Map() };
+    const room = { meta, game, sockets: new Map(), buyIns: new Map(), settled: false, settlement: null };
     this.rooms.set(roomId, room);
     return room;
   }
@@ -60,6 +61,7 @@ class RoomManager {
   joinRoom(roomId, user, buyIn, socket) {
     const room = this.loadRoom(roomId);
     if (!room) return { error: '房间不存在' };
+    if (room.settled) return { error: '游戏已结束' };
     if (room.game.players.length >= room.meta.max_seats &&
         !room.game.players.find(p => p.id === user.id)) {
       return { error: '房间已满' };
@@ -95,7 +97,7 @@ class RoomManager {
       existing.sittingOut = false;
       // 当局手牌进行中时保持 folded=true（无牌），下一手 startHand 会重新计算
       existing.ready = false;
-      room.buyIns.set(user.id, amount);
+      room.buyIns.set(user.id, (room.buyIns.get(user.id) || 0) + amount);
     }
     room.sockets.set(user.id, socket.id);
     socket.join(roomId);
@@ -109,9 +111,10 @@ class RoomManager {
     if (p) {
       // 归还桌面筹码到账户
       const dbUser = qUserById.get(userId);
-      if (dbUser) qUpdateChips.run(dbUser.chips + p.stack, userId);
+      if (dbUser && !room.settled) qUpdateChips.run(dbUser.chips + p.stack, userId);
       room.game.removePlayer(userId);
       p.stack = 0; // 清零，避免重新入座时出现幽灵筹码
+      room.buyIns.delete(userId);
     }
     room.sockets.delete(userId);
     this.broadcastState(roomId);
@@ -120,6 +123,7 @@ class RoomManager {
   setReady(roomId, userId, ready) {
     const room = this.rooms.get(roomId);
     if (!room) return { error: '房间不存在' };
+    if (room.settled) return { error: '游戏已结束' };
     const p = room.game.players.find(x => x.id === userId);
     if (!p) return { error: '玩家不在房间' };
     room.game.setReady(userId, !!ready);
@@ -127,9 +131,32 @@ class RoomManager {
     return { ok: true };
   }
 
+  addChips(roomId, userId) {
+    const room = this.rooms.get(roomId);
+    if (!room) return { error: '房间不存在' };
+    if (room.settled) return { error: '游戏已结束' };
+    const amount = room.meta.initial_stack || room.meta.big_blind * 100;
+    let dbUser = qUserById.get(userId);
+    if (!dbUser) return { error: '用户不存在' };
+    // 沿用加入房间时的破产赠送逻辑，避免账户为 0 时无法继续游戏。
+    if (dbUser.chips <= 0) {
+      qUpdateChips.run(10000, dbUser.id);
+      dbUser = qUserById.get(userId);
+    }
+    if (dbUser.chips < amount) return { error: `账户筹码不足，需要 ${amount}` };
+
+    const res = room.game.addChips(userId, amount);
+    if (res.error) return res;
+    qUpdateChips.run(dbUser.chips - amount, userId);
+    room.buyIns.set(userId, (room.buyIns.get(userId) || 0) + amount);
+    this.broadcastState(roomId);
+    return res;
+  }
+
   startGame(roomId, userId) {
     const room = this.rooms.get(roomId);
     if (!room) return { error: '房间不存在' };
+    if (room.settled) return { error: '游戏已结束' };
     if (room.meta.created_by !== userId) return { error: '仅房主可开始游戏' };
     if (room.game.phase !== 'WAITING') return { error: '游戏已在进行中' };
     // 房主自动 ready
@@ -152,7 +179,29 @@ class RoomManager {
   act(roomId, userId, action) {
     const room = this.rooms.get(roomId);
     if (!room) return { error: '房间不存在' };
+    if (room.settled) return { error: '游戏已结束' };
     return room.game.act(userId, action);
+  }
+
+  endGame(roomId, userId) {
+    const room = this.rooms.get(roomId);
+    if (!room) return { error: '房间不存在' };
+    if (room.meta.created_by !== userId) return { error: '仅房主可结束游戏' };
+    if (room.settled) return { error: '游戏已结束' };
+    if (room.game.phase !== 'WAITING') return { error: '请在本手结束后结算' };
+
+    const settlement = createSettlement(room.game.players, room.buyIns);
+    for (const p of room.game.players) {
+      const dbUser = qUserById.get(p.id);
+      if (dbUser) qUpdateChips.run(dbUser.chips + p.stack, p.id);
+      p.ready = false;
+      p.sittingOut = true;
+    }
+    room.settled = true;
+    room.settlement = settlement;
+    if (this.io) this.io.to(roomId).emit('game:settlement', settlement);
+    this.broadcastState(roomId);
+    return { ok: true, settlement };
   }
 
   broadcastState(roomId) {
@@ -160,6 +209,8 @@ class RoomManager {
     if (!room || !this.io) return;
     const state = room.game.publicState();
     state.hostId = room.meta.created_by;
+    state.initialStack = room.meta.initial_stack || room.meta.big_blind * 100;
+    state.gameEnded = room.settled;
     this.io.to(roomId).emit('state', state);
     // 单独给每位玩家推送底牌
     for (const [userId, socketId] of room.sockets.entries()) {

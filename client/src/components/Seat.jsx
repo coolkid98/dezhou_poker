@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Card from './Card.jsx';
 import { seatPosFor } from '../layout.js';
+import { getSeatVisibility } from './seatVisibility.js';
 
 export default function Seat({
   player, position, total,
@@ -23,12 +24,16 @@ export default function Seat({
     return () => clearInterval(t);
   }, [isTurn, turnDeadline]);
 
-  // 自己：优先用实时底牌（长度为2时有效），摊牌时 hole 被清空则回退到 showdownHole
-  const showCards = isSelf ? (hole?.length === 2 ? hole : showdownHole) : showdownHole;
+  const { showCards, foldClass, shouldAnimateFold } = getSeatVisibility({
+    player,
+    isSelf,
+    hole,
+    showdownHole,
+  });
   const classes = [
     'seat',
     isTurn && 'turn',
-    player.folded && 'folded',
+    foldClass,
     isSelf && 'self',
     isWinner && 'winner',
   ].filter(Boolean).join(' ');
@@ -49,7 +54,7 @@ export default function Seat({
         </div>
       )}
 
-      <div className={`seat-cards ${player.folded ? 'folding' : ''}`}>
+      <div className={`seat-cards ${shouldAnimateFold ? 'folding' : ''}`}>
         {showCards && showCards.length === 2
           ? showCards.map((c, i) => <Card key={i} code={c} />)
           : player.hasCards
