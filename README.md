@@ -40,8 +40,10 @@ npm run dev
 
 ### 1. 服务器安装 Docker 和 Docker Compose
 
+#### Ubuntu
+
 ```bash
-# Ubuntu（推荐：使用阿里云 Docker CE 镜像源，国内服务器更稳定）
+# 1.1 安装 Docker 所需依赖，并配置阿里云 Docker CE 镜像源
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl gnupg
 
@@ -56,22 +58,37 @@ echo \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 
 sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# 1.2 安装 Docker Engine
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
 sudo systemctl enable --now docker
 
-# 验证：这里是空格写法，不是 docker-compose
+# 1.3 安装 Docker Compose V2 插件
+sudo apt-get install -y docker-compose-plugin
+
+# 1.4 验证 Docker 和 Docker Compose
+docker --version
 docker compose version
 ```
+
+#### Alibaba Cloud Linux / CentOS
 
 如果服务器是 Alibaba Cloud Linux / CentOS：
 
 ```bash
+# 1.1 安装 Docker 所需依赖，并配置阿里云 Docker CE 镜像源
 sudo yum install -y yum-utils
 sudo yum-config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# 1.2 安装 Docker Engine
+sudo yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
 sudo systemctl enable --now docker
 
-# 验证：这里是空格写法，不是 docker-compose
+# 1.3 安装 Docker Compose V2 插件
+sudo yum install -y docker-compose-plugin
+
+# 1.4 验证 Docker 和 Docker Compose
+docker --version
 docker compose version
 ```
 
