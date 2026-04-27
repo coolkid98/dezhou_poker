@@ -383,9 +383,17 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   background: #0d1117; border: 1px solid #30363d; padding: 6px 12px;
   border-radius: 14px; font-size: 13px; color: #ffd33d; font-weight: bold;
 }
-.raise-group { display: flex; flex-direction: column; gap: 4px; }
-.raise-group input[type="range"] { width: 200px; }
-.raise-quick { display: flex; gap: 4px; }
+.raise-group { display: flex; flex-direction: column; gap: 6px; }
+.raise-input-row {
+  display: flex; align-items: center; gap: 6px;
+  color: #8b949e; font-size: 12px; font-weight: bold;
+}
+.raise-input-row input {
+  width: 92px; background: #0d1117; border: 1px solid #30363d;
+  border-radius: 6px; color: #e6edf3; padding: 5px 8px;
+  font-size: 13px; font-weight: bold;
+}
+.raise-quick { display: flex; gap: 4px; flex-wrap: wrap; }
 .raise-quick button {
   padding: 3px 8px !important; font-size: 11px !important;
   background: #30363d !important;
@@ -913,9 +921,9 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   /* 加注行：slider 满宽 */
   .action-raise { flex-direction: column; gap: 5px; }
   .action-raise .raise-group { width: 100%; }
-  .action-raise .raise-group input[type="range"] { width: 100%; }
-  .action-raise .raise-quick { gap: 4px; }
-  .action-raise .raise-quick button { flex: 1; padding: 5px 4px !important; font-size: 12px !important; }
+  .action-raise .raise-input-row { justify-content: center; }
+  .action-raise .raise-quick { gap: 4px; justify-content: center; }
+  .action-raise .raise-quick button { flex: 1 1 58px; padding: 5px 4px !important; font-size: 12px !important; }
   .action-raise .btn-raise { width: 100%; padding: 10px; font-size: 13px; }
 
   /* —— 历史侧栏 → 底部抽屉 —— */
@@ -959,7 +967,6 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
   .action-main .btn-call,
   .action-main .btn-allin { padding: 7px 4px; font-size: 12px; }
   .action-raise .btn-raise { padding: 7px; }
-  .raise-group input[type="range"] { width: 100%; }
   .seat { min-width: 68px; font-size: 9px; padding: 3px 4px; }
   .seat .card, .seat-cards .card { width: 28px; height: 38px; }
   .seat-cards { min-height: 38px; }

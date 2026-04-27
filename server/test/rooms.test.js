@@ -47,7 +47,15 @@ class TestRooms {
     const p = r.game.players.find(x => x.id === userId);
     if (!p) return { error: '玩家不在房间' };
     r.game.setReady(userId, !!ready);
+    this.tryAutoStartFirstHand(r);
     return { ok: true };
+  }
+  tryAutoStartFirstHand(r) {
+    if (r.game.phase !== 'WAITING' || r.game.handNo !== 0) return;
+    const eligible = r.game.players.filter(p => p.stack > 0);
+    if (eligible.length < 2) return;
+    if (!eligible.every(p => p.ready)) return;
+    r.game.tryStart();
   }
   startGame(id, userId) {
     const r = this.rooms.get(id);
@@ -133,6 +141,38 @@ test('rooms: 玩家 setReady(false) 可以取消准备', () => {
   assert.equal(rooms.rooms.get('R5').game.players.find(p => p.id === 2).ready, true);
   rooms.setReady('R5', 2, false);
   assert.equal(rooms.rooms.get('R5').game.players.find(p => p.id === 2).ready, false);
+});
+
+test('rooms: 首局所有有筹码玩家 ready 后自动开始', () => {
+  const rooms = new TestRooms();
+  rooms.create({ id: 'R_AUTO_1', hostId: 1 });
+  rooms.join('R_AUTO_1', 1, '房主');
+  rooms.join('R_AUTO_1', 2, '玩家2');
+  rooms.join('R_AUTO_1', 3, '玩家3');
+
+  rooms.setReady('R_AUTO_1', 1, true);
+  rooms.setReady('R_AUTO_1', 2, true);
+  assert.equal(rooms.rooms.get('R_AUTO_1').game.phase, 'WAITING');
+  rooms.setReady('R_AUTO_1', 3, true);
+
+  const game = rooms.rooms.get('R_AUTO_1').game;
+  assert.equal(game.phase, 'PREFLOP');
+  assert.equal(game.handNo, 1);
+});
+
+test('rooms: 首局之后全员 ready 不会自动开始下一手', () => {
+  const rooms = new TestRooms();
+  rooms.create({ id: 'R_AUTO_2', hostId: 1 });
+  rooms.join('R_AUTO_2', 1, '房主');
+  rooms.join('R_AUTO_2', 2, '玩家2');
+  const game = rooms.rooms.get('R_AUTO_2').game;
+  game.handNo = 1;
+
+  rooms.setReady('R_AUTO_2', 1, true);
+  rooms.setReady('R_AUTO_2', 2, true);
+
+  assert.equal(game.phase, 'WAITING');
+  assert.equal(game.handNo, 1);
 });
 
 test('rooms: 房主开始时仅 1 人 ready 也应拒绝', () => {

@@ -502,14 +502,18 @@ export default function Table({ user, musicOn, setMusicOn }) {
                 )}
                 {isHost && (
                   <>
-                    <button
-                      className={`start-btn${state.handNo > 0 && canStart ? ' next-hand' : ''}`}
-                      disabled={!canStart}
-                      onClick={startGame}
-                      title={canStart ? (state.handNo > 0 ? '开始下一手' : '开始游戏') : '等待所有玩家准备'}
-                    >
-                      {state.handNo > 0 ? '▶ 开始下一手' : `🎬 开始游戏 (${readyCount}/${seatedCount})`}
-                    </button>
+                    {state.handNo === 0 ? (
+                      <div className="waiting-msg small">所有玩家准备后自动开始</div>
+                    ) : (
+                      <button
+                        className={`start-btn${canStart ? ' next-hand' : ''}`}
+                        disabled={!canStart}
+                        onClick={startGame}
+                        title={canStart ? '开始下一手' : '等待所有玩家准备'}
+                      >
+                        ▶ 开始下一手
+                      </button>
+                    )}
                     <button
                       className="end-game-btn"
                       disabled={state.gameEnded}
@@ -525,7 +529,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
                     {state.handNo > 0
                       ? '⌛ 等待房主开始下一手...'
                       : othersReady
-                        ? '⌛ 等待房主开始游戏'
+                        ? '⌛ 等待所有玩家准备后自动开始'
                         : `⌛ 等待其他玩家准备 (${readyCount}/${seatedCount})`}
                   </div>
                 )}
@@ -541,6 +545,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
             me={me}
             currentBet={state.currentBet}
             minRaise={state.minRaise}
+            pot={state.pot}
             myTurn={myTurn}
             turnDeadline={state.turnDeadline}
             onAct={act}

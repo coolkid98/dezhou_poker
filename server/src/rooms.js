@@ -127,8 +127,18 @@ class RoomManager {
     const p = room.game.players.find(x => x.id === userId);
     if (!p) return { error: '玩家不在房间' };
     room.game.setReady(userId, !!ready);
+    this.tryAutoStartFirstHand(room);
     this.broadcastState(roomId);
     return { ok: true };
+  }
+
+  tryAutoStartFirstHand(room) {
+    if (!room || room.settled) return;
+    if (room.game.phase !== 'WAITING' || room.game.handNo !== 0) return;
+    const eligible = room.game.players.filter(p => p.stack > 0);
+    if (eligible.length < 2) return;
+    if (!eligible.every(p => p.ready)) return;
+    room.game.tryStart();
   }
 
   addChips(roomId, userId) {

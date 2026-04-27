@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { clampBet, poolRaiseTo } from './betSizing.js';
 
-export default function ActionBar({ me, currentBet, minRaise, myTurn, turnDeadline, onAct }) {
+export default function ActionBar({ me, currentBet, minRaise, pot, myTurn, turnDeadline, onAct }) {
   const toCall = Math.max(0, currentBet - me.bet);
   const canCheck = toCall === 0;
   const minRaiseTo = Math.min(currentBet + minRaise, me.bet + me.stack);
   const maxRaiseTo = me.bet + me.stack;
   const [raiseTo, setRaiseTo] = useState(minRaiseTo);
+  const [raiseInput, setRaiseInput] = useState(String(minRaiseTo));
   const [remain, setRemain] = useState(60);
 
   useEffect(() => {
-    setRaiseTo(Math.min(Math.max(minRaiseTo, me.bet), maxRaiseTo));
-  }, [minRaiseTo, maxRaiseTo, me.bet]);
+    const next = clampBet(minRaiseTo, minRaiseTo, maxRaiseTo);
+    setRaiseTo(next);
+    setRaiseInput(String(next));
+  }, [minRaiseTo, maxRaiseTo]);
 
   useEffect(() => {
     if (!myTurn || !turnDeadline) { setRemain(60); return; }
@@ -26,6 +30,21 @@ export default function ActionBar({ me, currentBet, minRaise, myTurn, turnDeadli
   if (me.folded) return <div className="action-bar waiting">你已弃牌</div>;
 
   const canRaise = me.stack > toCall && maxRaiseTo > currentBet;
+  const setRaiseAmount = (value) => {
+    const next = clampBet(value, minRaiseTo, maxRaiseTo);
+    setRaiseTo(next);
+    setRaiseInput(String(next));
+  };
+  const setPoolFraction = (fraction) => {
+    setRaiseAmount(poolRaiseTo({
+      pot,
+      fraction,
+      meBet: me.bet,
+      toCall,
+      minRaiseTo,
+      maxRaiseTo,
+    }));
+  };
 
   return (
     <div className="action-bar">
@@ -47,18 +66,26 @@ export default function ActionBar({ me, currentBet, minRaise, myTurn, turnDeadli
       {canRaise && (
         <div className="action-raise">
           <div className="raise-group">
-            <input
-              type="range"
-              min={minRaiseTo}
-              max={maxRaiseTo}
-              value={raiseTo}
-              onChange={e => setRaiseTo(+e.target.value)}
-            />
+            <div className="raise-input-row">
+              <span>加注至</span>
+              <input
+                type="number"
+                min={minRaiseTo}
+                max={maxRaiseTo}
+                value={raiseInput}
+                onChange={e => {
+                  setRaiseInput(e.target.value);
+                  setRaiseTo(clampBet(e.target.value, minRaiseTo, maxRaiseTo));
+                }}
+                onBlur={() => setRaiseAmount(raiseInput)}
+              />
+            </div>
             <div className="raise-quick">
-              <button type="button" onClick={() => setRaiseTo(minRaiseTo)}>最小</button>
-              <button type="button" onClick={() => setRaiseTo(Math.min(maxRaiseTo, currentBet * 2 + me.bet))}>2x</button>
-              <button type="button" onClick={() => setRaiseTo(Math.min(maxRaiseTo, currentBet * 3 + me.bet))}>3x</button>
-              <button type="button" onClick={() => setRaiseTo(maxRaiseTo)}>MAX</button>
+              <button type="button" onClick={() => setPoolFraction(1 / 4)}>1/4池</button>
+              <button type="button" onClick={() => setPoolFraction(1 / 3)}>1/3池</button>
+              <button type="button" onClick={() => setPoolFraction(1 / 2)}>1/2池</button>
+              <button type="button" onClick={() => setRaiseAmount(minRaiseTo)}>最小</button>
+              <button type="button" onClick={() => setRaiseAmount(maxRaiseTo)}>MAX</button>
             </div>
           </div>
           <button className="btn-raise" onClick={() => onAct('raise', raiseTo)}>
