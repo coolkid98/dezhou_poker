@@ -7,13 +7,31 @@ export function chipColors(amount) {
 }
 
 export function potChipStyle(index) {
+  const { left, bottom, rotation } = potChipOffset(index);
+  return {
+    left: `${left}px`,
+    bottom: `${bottom}px`,
+    zIndex: index + 1,
+    '--chip-rot': rotation,
+  };
+}
+
+export function potChipOffset(index) {
   const col = index % 6;
   const row = Math.floor(index / 6);
-  const offsetY = row * 4;
   return {
-    left: `${col * 13}px`,
-    bottom: `${offsetY}px`,
-    zIndex: index + 1,
-    transform: `rotate(${((index % 5) - 2) * 8}deg)`,
+    left: col * 13,
+    bottom: row * 4,
+    rotation: `${((index % 5) - 2) * 8}deg`,
+  };
+}
+
+export function potChipTarget({ feltRect, stackRect, clientLeft = 0, clientTop = 0, index, chipSize = 30 }) {
+  if (!feltRect || !stackRect) return { x: null, y: null };
+  const offset = potChipOffset(index);
+  const radius = chipSize / 2;
+  return {
+    x: stackRect.left - feltRect.left - clientLeft + offset.left + radius,
+    y: stackRect.bottom - feltRect.top - clientTop - offset.bottom - radius,
   };
 }

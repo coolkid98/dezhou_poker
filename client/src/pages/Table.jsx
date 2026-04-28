@@ -8,6 +8,7 @@ import HandHistory from '../components/HandHistory.jsx';
 import ChipFlight from '../components/ChipFlight.jsx';
 import PotChipStack from '../components/PotChipStack.jsx';
 import { seatPosFor } from '../layout.js';
+import { potChipTarget } from '../components/chipVisuals.js';
 import { sfx } from '../sfx.js';
 import { tts } from '../tts.js';
 import { music } from '../music.js';
@@ -21,6 +22,8 @@ const ACTION_LABELS = {
   allin: { text: 'All-In', cls: 'allin' },
   blind: { text: '盲注', cls: 'blind' },
 };
+
+const AI_ANALYSIS_ENABLED = false;
 
 function winRateColor(rate) {
   if (rate >= 65) return '#3fb950';
@@ -49,9 +52,8 @@ export default function Table({ user, musicOn, setMusicOn }) {
   const [toast, setToast] = useState('');
   // playerId → { action, amount, key }，驱动气泡动画
   const [actionPopups, setActionPopups] = useState({});
-  // 飞行中的筹码 [{ id, playerId, amount }]
+  // 本手筹码动画。筹码飞到最终槽位后保留在原 DOM 中，作为底池筹码堆的一部分。
   const [chipFlights, setChipFlights] = useState([]);
-  const [potChips, setPotChips] = useState([]);
   // 每张公共牌是否已入场（用于翻牌/转牌/河牌依次亮起）
   const [boardRevealCount, setBoardRevealCount] = useState(0);
   // 摊牌逐个揭示的进度：-1 未开始，>=0 已揭示到此索引
@@ -62,6 +64,8 @@ export default function Table({ user, musicOn, setMusicOn }) {
 
   const socketRef = useRef(null);
   const stateRef = useRef(null);
+  const feltRef = useRef(null);
+  const potStackRef = useRef(null);
   stateRef.current = state;
 
   // 记录上一次手牌 key（如 'As-Kh'），用于检测新一手的手牌
@@ -73,6 +77,19 @@ export default function Table({ user, musicOn, setMusicOn }) {
   const updateAiData = useCallback((data) => {
     aiDataRef.current = data;
     setAiData(data);
+  }, []);
+  const getPotChipTarget = useCallback((index) => {
+    const feltRect = feltRef.current?.getBoundingClientRect();
+    const stackRect = potStackRef.current?.getBoundingClientRect();
+    const feltEl = feltRef.current;
+    if (!feltRect || !stackRect || !feltEl) return { x: null, y: null };
+    return potChipTarget({
+      feltRect,
+      stackRect,
+      clientLeft: feltEl.clientLeft,
+      clientTop: feltEl.clientTop,
+      index,
+    });
   }, []);
 
   // 进入牌桌自动开启背景音乐，离开时停止
@@ -128,13 +145,13 @@ export default function Table({ user, musicOn, setMusicOn }) {
         setTimeout(() => sfx.cardFlip(), flipDelay);
       }
       // 翻/转/河牌来了，且玩家手上有牌 → 重新请求 AI 分析
-      if (st.board.length > prevBoardLen && holeRef.current?.length === 2) {
+      if (AI_ANALYSIS_ENABLED && st.board.length > prevBoardLen && holeRef.current?.length === 2) {
         updateAiData({ status: 'loading' });
         s.emit('ai:suggest');
       }
       // 新轮到自己行动（安全兜底）：AI 未分析则立即触发
       const wasMyTurn = stateRef.current?.turnPlayerId === user.id;
-      if (st.turnPlayerId === user.id && !wasMyTurn && holeRef.current?.length === 2) {
+      if (AI_ANALYSIS_ENABLED && st.turnPlayerId === user.id && !wasMyTurn && holeRef.current?.length === 2) {
         const cur = aiDataRef.current;
         if (cur.status === 'idle' || cur.status === 'error') {
           updateAiData({ status: 'loading' });
@@ -147,7 +164,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
       setHole(newHole);
       holeRef.current = newHole;
 
-      if (newHole && newHole.length === 2) {
+      if (AI_ANALYSIS_ENABLED && newHole && newHole.length === 2) {
         const key = newHole.join('-');
         // 只有手牌变化（新的一手）才触发 AI 分析
         if (key !== prevHoleKeyRef.current) {
@@ -191,10 +208,14 @@ export default function Table({ user, musicOn, setMusicOn }) {
         // 下注类动作：生成一枚筹码动画 + 音效
         if (ev.amount > 0 && ['call', 'raise', 'allin', 'blind'].includes(ev.kind)) {
           const flightId = `${Date.now()}_${Math.random()}`;
-          setChipFlights(arr => [
-            ...arr,
-            { id: flightId, playerId: ev.playerId, amount: ev.amount },
-          ]);
+          setChipFlights(arr => {
+            const targetIndex = arr.length;
+            const target = getPotChipTarget(targetIndex);
+            return [
+              ...arr,
+              { id: flightId, playerId: ev.playerId, amount: ev.amount, targetIndex, target },
+            ];
+          });
         }
         // 音效分发
         if (ev.kind === 'fold') sfx.fold();
@@ -208,7 +229,6 @@ export default function Table({ user, musicOn, setMusicOn }) {
         setHandEnd(null);
         setActionPopups({});
         setChipFlights([]);
-        setPotChips([]);
         setRevealIdx(-1);
         // 新手开始：清空上轮 AI 结果，等待手牌下发后重新分析
         updateAiData({ status: 'idle' });
@@ -309,7 +329,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
     : state.players;
 
   // 是否显示 AI 面板：非等待阶段 + 玩家有手牌 + AI 已触发
-  const showAiPanel = !inWaiting && hole && hole.length === 2 &&
+  const showAiPanel = AI_ANALYSIS_ENABLED && !inWaiting && hole && hole.length === 2 &&
     (aiData.status === 'loading' || aiData.status === 'done' || aiData.status === 'error');
   const highlightedBestCards = new Set(
     (handEnd?.showdownHoles || [])
@@ -342,7 +362,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
         </button>
       </div>
 
-      <div className={`felt ${ordered.length >= 7 ? 'big-table' : ''}`}>
+      <div ref={feltRef} className={`felt ${ordered.length >= 7 ? 'big-table' : ''}`}>
         <div className="board-area">
           {state.sidePots ? (
             <div className="pot-row">
@@ -354,7 +374,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
                   </span>
                 ))}
               </div>
-              <PotChipStack chips={potChips} />
+              <PotChipStack ref={potStackRef} />
             </div>
           ) : (
             <div className="pot-area">
@@ -363,7 +383,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
                   <span className="chip-dot" />
                   底池 <span className="pot-num">{state.pot}</span>
                 </div>
-                <PotChipStack chips={potChips} />
+                <PotChipStack ref={potStackRef} />
               </div>
             </div>
           )}
@@ -428,11 +448,9 @@ export default function Table({ user, musicOn, setMusicOn }) {
               key={f.id}
               fromX={x}
               fromY={y}
+              targetX={f.target?.x}
+              targetY={f.target?.y}
               amount={f.amount}
-              onDone={() => {
-                setPotChips(arr => [...arr, { id: f.id, amount: f.amount }]);
-                setChipFlights(arr => arr.filter(c => c.id !== f.id));
-              }}
             />
           );
         })}
