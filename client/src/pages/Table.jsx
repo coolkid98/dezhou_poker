@@ -12,6 +12,12 @@ import { potChipTarget } from '../components/chipVisuals.js';
 import { sfx } from '../sfx.js';
 import { tts } from '../tts.js';
 import { music } from '../music.js';
+import {
+  VOICE_RTC_CONFIG,
+  createRemoteAudioElement,
+  removeVoicePeer,
+  upsertVoicePeer,
+} from '../voiceChat.js';
 
 // 行动气泡的中文文案和样式 class
 const ACTION_LABELS = {
@@ -61,12 +67,20 @@ export default function Table({ user, musicOn, setMusicOn }) {
 
   // AI 分析状态：{ status: 'idle'|'loading'|'done'|'error', winRate, equity, suggestion, error }
   const [aiData, setAiData] = useState({ status: 'idle' });
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voicePeers, setVoicePeers] = useState({});
+  const [voiceError, setVoiceError] = useState('');
 
   const socketRef = useRef(null);
   const stateRef = useRef(null);
   const feltRef = useRef(null);
   const potStackRef = useRef(null);
+  const localVoiceStreamRef = useRef(null);
+  const peerConnectionsRef = useRef(new Map());
+  const remoteAudioRef = useRef(new Map());
+  const voiceEnabledRef = useRef(false);
   stateRef.current = state;
+  voiceEnabledRef.current = voiceEnabled;
 
   // 记录上一次手牌 key（如 'As-Kh'），用于检测新一手的手牌
   const prevHoleKeyRef = useRef(null);
@@ -91,6 +105,99 @@ export default function Table({ user, musicOn, setMusicOn }) {
       index,
     });
   }, []);
+
+  const closeVoicePeer = useCallback((playerId) => {
+    const pc = peerConnectionsRef.current.get(playerId);
+    if (pc) pc.close();
+    peerConnectionsRef.current.delete(playerId);
+    const audio = remoteAudioRef.current.get(playerId);
+    if (audio) audio.remove();
+    remoteAudioRef.current.delete(playerId);
+    setVoicePeers(peers => removeVoicePeer(peers, playerId));
+  }, []);
+
+  const createVoicePeerConnection = useCallback((playerId) => {
+    const existing = peerConnectionsRef.current.get(playerId);
+    if (existing) return existing;
+
+    const pc = new RTCPeerConnection(VOICE_RTC_CONFIG);
+    peerConnectionsRef.current.set(playerId, pc);
+    localVoiceStreamRef.current?.getTracks().forEach(track => {
+      pc.addTrack(track, localVoiceStreamRef.current);
+    });
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socketRef.current?.emit('voice:ice-candidate', {
+          toPlayerId: playerId,
+          candidate: event.candidate,
+        });
+      }
+    };
+    pc.ontrack = (event) => {
+      const [stream] = event.streams;
+      if (!stream || remoteAudioRef.current.has(playerId)) return;
+      const audio = createRemoteAudioElement(playerId, stream);
+      remoteAudioRef.current.set(playerId, audio);
+      document.body.appendChild(audio);
+      audio.play?.().catch(() => {});
+    };
+    pc.onconnectionstatechange = () => {
+      if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) {
+        closeVoicePeer(playerId);
+      }
+    };
+    return pc;
+  }, [closeVoicePeer]);
+
+  const startVoice = useCallback(async () => {
+    if (voiceEnabledRef.current) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setVoiceError('当前浏览器不支持麦克风');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+        video: false,
+      });
+      localVoiceStreamRef.current = stream;
+      setVoiceEnabled(true);
+      setVoiceError('');
+      setVoicePeers(peers => upsertVoicePeer(peers, {
+        playerId: user.id,
+        nickname: user.nickname,
+      }));
+      socketRef.current?.emit('voice:join');
+    } catch (err) {
+      setVoiceError('麦克风开启失败，请检查浏览器权限');
+      setTimeout(() => setVoiceError(''), 3000);
+    }
+  }, [user.id, user.nickname]);
+
+  const stopVoice = useCallback(() => {
+    socketRef.current?.emit('voice:leave');
+    localVoiceStreamRef.current?.getTracks().forEach(track => track.stop());
+    localVoiceStreamRef.current = null;
+    for (const pc of peerConnectionsRef.current.values()) {
+      pc.onconnectionstatechange = null;
+      pc.close();
+    }
+    peerConnectionsRef.current.clear();
+    for (const audio of remoteAudioRef.current.values()) audio.remove();
+    remoteAudioRef.current.clear();
+    setVoiceEnabled(false);
+    setVoiceError('');
+    setVoicePeers(peers => removeVoicePeer(peers, user.id));
+  }, [user.id]);
+
+  const toggleVoice = useCallback(() => {
+    if (voiceEnabledRef.current) stopVoice();
+    else startVoice();
+  }, [startVoice, stopVoice]);
 
   // 进入牌桌自动开启背景音乐，离开时停止
   useEffect(() => {
@@ -185,6 +292,60 @@ export default function Table({ user, musicOn, setMusicOn }) {
         return;
       }
       updateAiData({ status: 'done', winRate: data.winRate, action: data.action, reason: data.reason });
+    });
+
+    s.on('voice:peers', async ({ peers = [] }) => {
+      for (const peer of peers) {
+        setVoicePeers(cur => upsertVoicePeer(cur, peer));
+      }
+      if (!localVoiceStreamRef.current) return;
+      for (const peer of peers) {
+        const pc = createVoicePeerConnection(peer.playerId);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        s.emit('voice:offer', {
+          toPlayerId: peer.playerId,
+          description: pc.localDescription,
+        });
+      }
+    });
+
+    s.on('voice:peer-joined', (peer) => {
+      setVoicePeers(cur => upsertVoicePeer(cur, peer));
+    });
+
+    s.on('voice:offer', async ({ fromPlayerId, fromNickname, description }) => {
+      if (!localVoiceStreamRef.current || !description) return;
+      setVoicePeers(cur => upsertVoicePeer(cur, {
+        playerId: fromPlayerId,
+        nickname: fromNickname,
+      }));
+      const pc = createVoicePeerConnection(fromPlayerId);
+      await pc.setRemoteDescription(description);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      s.emit('voice:answer', {
+        toPlayerId: fromPlayerId,
+        description: pc.localDescription,
+      });
+    });
+
+    s.on('voice:answer', async ({ fromPlayerId, description }) => {
+      const pc = peerConnectionsRef.current.get(fromPlayerId);
+      if (!pc || !description || pc.signalingState === 'stable') return;
+      await pc.setRemoteDescription(description);
+    });
+
+    s.on('voice:ice-candidate', async ({ fromPlayerId, candidate }) => {
+      const pc = peerConnectionsRef.current.get(fromPlayerId);
+      if (!pc || !candidate) return;
+      try {
+        await pc.addIceCandidate(candidate);
+      } catch {}
+    });
+
+    s.on('voice:peer-left', ({ playerId }) => {
+      closeVoicePeer(playerId);
     });
 
     s.on('game:event', (ev) => {
@@ -285,10 +446,13 @@ export default function Table({ user, musicOn, setMusicOn }) {
     });
 
     return () => {
+      stopVoice();
       s.emit('room:leave');
       s.off('state'); s.off('private:cards'); s.off('hand:end');
       s.off('hand:history'); s.off('game:settlement'); s.off('error'); s.off('connect');
       s.off('game:event'); s.off('ai:suggestion');
+      s.off('voice:peers'); s.off('voice:peer-joined'); s.off('voice:peer-left');
+      s.off('voice:offer'); s.off('voice:answer'); s.off('voice:ice-candidate');
     };
   }, [roomId]);
 
@@ -351,7 +515,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
           </span>
         </div>
         <button
-          className="icon-btn"
+          className="icon-btn music-btn"
           onClick={async () => {
             if (music.isPlaying()) { music.stop(); setMusicOn?.(false); }
             else { await music.start(); setMusicOn?.(true); }
@@ -433,6 +597,8 @@ export default function Table({ user, musicOn, setMusicOn }) {
                 showdownHandName={shInfo?.handName}
                 bestCards={shInfo?.bestCards}
                 isWinner={handEnd?.winners?.some(w => w.playerId === p.id)}
+                isVoiceOn={Boolean(voicePeers[p.id])}
+                onToggleVoice={p.id === user.id ? toggleVoice : undefined}
                 actionPopup={actionPopups[p.id]}
               />
             );
@@ -646,7 +812,7 @@ export default function Table({ user, musicOn, setMusicOn }) {
         </div>
       )}
 
-      {toast && <div className="toast">{toast}</div>}
+      {(toast || voiceError) && <div className="toast">{toast || voiceError}</div>}
     </div>
   );
 }

@@ -8,6 +8,21 @@ import { cardToStr } from './poker/deck.js';
 
 export function attachSocket(io) {
   rooms.attachIo(io);
+  const voiceUsers = new Map(); // roomId -> Map<userId, { socketId, nickname }>
+
+  const leaveVoice = (roomId, userId) => {
+    const roomVoice = voiceUsers.get(roomId);
+    if (!roomVoice || !roomVoice.has(userId)) return;
+    roomVoice.delete(userId);
+    if (roomVoice.size === 0) voiceUsers.delete(roomId);
+    socketToRoom(io, roomId).emit('voice:peer-left', { playerId: userId });
+  };
+
+  const voiceTargetSocket = (roomId, userId) => {
+    const roomVoice = voiceUsers.get(roomId);
+    return roomVoice?.get(userId)?.socketId || null;
+  };
+
   io.use((socket, next) => {
     const token = socket.handshake.auth?.token;
     const payload = token && verifyToken(token);
@@ -35,6 +50,13 @@ export function attachSocket(io) {
       rooms.broadcastState(roomId);
       socket.emit('room:joined', { roomId });
       socket.emit('hand:history', rooms.getHistory(roomId));
+      const roomVoice = voiceUsers.get(roomId);
+      if (roomVoice) {
+        const peers = [...roomVoice.entries()]
+          .filter(([id]) => id !== user.id)
+          .map(([id, info]) => ({ playerId: id, nickname: info.nickname }));
+        socket.emit('voice:peers', { peers });
+      }
       // 断线重连：仅对已在房间内的玩家补发上一手结算结果
       if (res.isRejoining) {
         const rejoiningRoom = rooms.rooms.get(roomId);
@@ -46,6 +68,7 @@ export function attachSocket(io) {
 
     socket.on('room:leave', () => {
       if (currentRoomId) {
+        leaveVoice(currentRoomId, user.id);
         rooms.leaveRoom(currentRoomId, user.id);
         socket.leave(currentRoomId);
         currentRoomId = null;
@@ -81,6 +104,63 @@ export function attachSocket(io) {
       if (!currentRoomId) return;
       const res = rooms.act(currentRoomId, user.id, action);
       if (res && res.error) socket.emit('error', { message: res.error });
+    });
+
+    socket.on('voice:join', () => {
+      if (!currentRoomId) return;
+      let roomVoice = voiceUsers.get(currentRoomId);
+      if (!roomVoice) {
+        roomVoice = new Map();
+        voiceUsers.set(currentRoomId, roomVoice);
+      }
+      const peers = [...roomVoice.entries()]
+        .filter(([id]) => id !== user.id)
+        .map(([id, info]) => ({ playerId: id, nickname: info.nickname }));
+      roomVoice.set(user.id, { socketId: socket.id, nickname: user.nickname });
+      socket.emit('voice:peers', { peers });
+      socket.to(currentRoomId).emit('voice:peer-joined', {
+        playerId: user.id,
+        nickname: user.nickname,
+      });
+    });
+
+    socket.on('voice:leave', () => {
+      if (!currentRoomId) return;
+      leaveVoice(currentRoomId, user.id);
+    });
+
+    socket.on('voice:offer', ({ toPlayerId, description } = {}) => {
+      if (!currentRoomId || !toPlayerId || !description) return;
+      const targetSocket = voiceTargetSocket(currentRoomId, toPlayerId);
+      if (targetSocket) {
+        io.to(targetSocket).emit('voice:offer', {
+          fromPlayerId: user.id,
+          fromNickname: user.nickname,
+          description,
+        });
+      }
+    });
+
+    socket.on('voice:answer', ({ toPlayerId, description } = {}) => {
+      if (!currentRoomId || !toPlayerId || !description) return;
+      const targetSocket = voiceTargetSocket(currentRoomId, toPlayerId);
+      if (targetSocket) {
+        io.to(targetSocket).emit('voice:answer', {
+          fromPlayerId: user.id,
+          description,
+        });
+      }
+    });
+
+    socket.on('voice:ice-candidate', ({ toPlayerId, candidate } = {}) => {
+      if (!currentRoomId || !toPlayerId || !candidate) return;
+      const targetSocket = voiceTargetSocket(currentRoomId, toPlayerId);
+      if (targetSocket) {
+        io.to(targetSocket).emit('voice:ice-candidate', {
+          fromPlayerId: user.id,
+          candidate,
+        });
+      }
     });
 
     socket.on('ai:suggest', async () => {
@@ -131,10 +211,15 @@ export function attachSocket(io) {
 
     socket.on('disconnect', () => {
       if (currentRoomId) {
+        leaveVoice(currentRoomId, user.id);
         // 断线不立刻离开，只解除 socket 映射；玩家可用相同账号重连
         const room = rooms.rooms.get(currentRoomId);
         if (room) room.sockets.delete(user.id);
       }
     });
   });
+}
+
+function socketToRoom(io, roomId) {
+  return io.to(roomId);
 }

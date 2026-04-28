@@ -3,11 +3,12 @@ import Card from './Card.jsx';
 import { seatPosFor } from '../layout.js';
 import { getSeatVisibility } from './seatVisibility.js';
 import { getTurnColor, getTurnProgress } from './turnTimer.js';
+import { getVoiceIndicator } from '../voiceChat.js';
 
 export default function Seat({
   player, position, total,
   isSelf, isTurn, isButton, isSB, isBB, isHost, turnDeadline,
-  hole, showdownHole, showdownHandName, bestCards, isWinner, actionPopup,
+  hole, showdownHole, showdownHandName, bestCards, isWinner, isVoiceOn, onToggleVoice, actionPopup,
 }) {
   const [x, y] = seatPosFor(total, position);
 
@@ -44,6 +45,7 @@ export default function Seat({
     : isBB
     ? { label: 'BB', cls: 'bb-chip' }
     : null;
+  const voice = getVoiceIndicator({ isSelf, isVoiceOn });
 
   return (
     <div className={classes} style={{ left: `${x}%`, top: `${y}%` }}>
@@ -73,6 +75,21 @@ export default function Seat({
           {isHost && <span className="host-crown" title="房主">👑</span>}
           {positionBadge && <span className={positionBadge.cls}>{positionBadge.label}</span>}
           <span className="nick">{player.nickname}</span>
+          {voice.clickable ? (
+            <button
+              type="button"
+              className={voice.className}
+              onClick={onToggleVoice}
+              title={voice.title}
+              aria-label={voice.title}
+            >
+              <span className="voice-mic-icon" aria-hidden="true" />
+            </button>
+          ) : (
+            <span className={voice.className} title={voice.title} aria-label={voice.title}>
+              <span className="voice-mic-icon" aria-hidden="true" />
+            </span>
+          )}
           {player.sittingOut && <span className="tag">旁观</span>}
           {player.allIn && <span className="tag allin">ALL-IN</span>}
           {!player.hasCards && player.ready && <span className="tag ready">READY</span>}
