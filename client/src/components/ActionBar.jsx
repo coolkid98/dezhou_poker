@@ -24,12 +24,14 @@ export default function ActionBar({ me, currentBet, minRaise, pot, myTurn, turnD
     return () => clearInterval(t);
   }, [myTurn, turnDeadline]);
 
-  if (!myTurn) {
-    return <div className="action-bar waiting">等待其他玩家行动...</div>;
-  }
-  if (me.folded) return <div className="action-bar waiting">你已弃牌</div>;
-
   const canRaise = me.stack > toCall && maxRaiseTo > currentBet;
+  const disabled = !myTurn || me.folded;
+  const showRaiseControls = canRaise || disabled;
+  const statusText = me.folded
+    ? '你已弃牌'
+    : myTurn
+    ? '轮到你行动'
+    : '等待其他玩家行动';
   const setRaiseAmount = (value) => {
     const next = clampBet(value, minRaiseTo, maxRaiseTo);
     setRaiseTo(next);
@@ -47,23 +49,24 @@ export default function ActionBar({ me, currentBet, minRaise, pot, myTurn, turnD
   };
 
   return (
-    <div className="action-bar">
+    <div className={`action-bar${disabled ? ' action-disabled' : ''}`}>
+      <div className="action-status">{statusText}</div>
       {/* 主操作行：计时 + 弃牌/过牌/跟注 + All-in */}
       <div className="action-main">
         <div className={`timer-pill${remain <= 10 ? ' urgent' : ''}`}>⏱ {remain}s</div>
-        <button className="btn-fold" onClick={() => onAct('fold')}>弃牌</button>
+        <button className="btn-fold" disabled={disabled} onClick={() => onAct('fold')}>弃牌</button>
         {canCheck ? (
-          <button className="btn-check" onClick={() => onAct('check')}>过牌</button>
+          <button className="btn-check" disabled={disabled} onClick={() => onAct('check')}>过牌</button>
         ) : (
-          <button className="btn-call" onClick={() => onAct('call')}>
+          <button className="btn-call" disabled={disabled} onClick={() => onAct('call')}>
             跟注 {Math.min(toCall, me.stack)}
           </button>
         )}
-        <button className="btn-allin" onClick={() => onAct('allin')}>All-in</button>
+        <button className="btn-allin" disabled={disabled} onClick={() => onAct('allin')}>All-in</button>
       </div>
 
       {/* 加注行（可选） */}
-      {canRaise && (
+      {showRaiseControls && (
         <div className="action-raise">
           <div className="raise-group">
             <div className="raise-input-row">
@@ -73,6 +76,7 @@ export default function ActionBar({ me, currentBet, minRaise, pot, myTurn, turnD
                 min={minRaiseTo}
                 max={maxRaiseTo}
                 value={raiseInput}
+                disabled={disabled}
                 onChange={e => {
                   setRaiseInput(e.target.value);
                   setRaiseTo(clampBet(e.target.value, minRaiseTo, maxRaiseTo));
@@ -81,14 +85,14 @@ export default function ActionBar({ me, currentBet, minRaise, pot, myTurn, turnD
               />
             </div>
             <div className="raise-quick">
-              <button type="button" onClick={() => setPoolFraction(1 / 4)}>1/4池</button>
-              <button type="button" onClick={() => setPoolFraction(1 / 3)}>1/3池</button>
-              <button type="button" onClick={() => setPoolFraction(1 / 2)}>1/2池</button>
-              <button type="button" onClick={() => setRaiseAmount(minRaiseTo)}>最小</button>
-              <button type="button" onClick={() => setRaiseAmount(maxRaiseTo)}>MAX</button>
+              <button type="button" disabled={disabled} onClick={() => setPoolFraction(1 / 4)}>1/4池</button>
+              <button type="button" disabled={disabled} onClick={() => setPoolFraction(1 / 3)}>1/3池</button>
+              <button type="button" disabled={disabled} onClick={() => setPoolFraction(1 / 2)}>1/2池</button>
+              <button type="button" disabled={disabled} onClick={() => setRaiseAmount(minRaiseTo)}>最小</button>
+              <button type="button" disabled={disabled} onClick={() => setRaiseAmount(maxRaiseTo)}>MAX</button>
             </div>
           </div>
-          <button className="btn-raise" onClick={() => onAct('raise', raiseTo)}>
+          <button className="btn-raise" disabled={disabled} onClick={() => onAct('raise', raiseTo)}>
             加注至 {raiseTo}
           </button>
         </div>
