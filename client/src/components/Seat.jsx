@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Card from './Card.jsx';
 import { seatPosFor } from '../layout.js';
 import { getSeatVisibility } from './seatVisibility.js';
+import { getTurnColor, getTurnProgress } from './turnTimer.js';
 
 export default function Seat({
   player, position, total,
@@ -14,10 +15,8 @@ export default function Seat({
   const [progress, setProgress] = useState(100);
   useEffect(() => {
     if (!isTurn || !turnDeadline) { setProgress(100); return; }
-    const total = 30_000;
     const tick = () => {
-      const remain = Math.max(0, turnDeadline - Date.now());
-      setProgress(Math.max(0, Math.min(100, (remain / total) * 100)));
+      setProgress(getTurnProgress(turnDeadline));
     };
     tick();
     const t = setInterval(tick, 100);
@@ -50,7 +49,14 @@ export default function Seat({
     <div className={classes} style={{ left: `${x}%`, top: `${y}%` }}>
       {isTurn && (
         <div className="turn-ring">
-          <div className="turn-ring-progress" style={{ width: `${progress}%` }} />
+          <div
+            className="turn-ring-progress"
+            style={{
+              width: `${progress}%`,
+              backgroundColor: getTurnColor(progress),
+              color: getTurnColor(progress),
+            }}
+          />
         </div>
       )}
 

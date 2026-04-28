@@ -229,17 +229,20 @@ table.rooms code { background: #0d1117; padding: 2px 6px; border-radius: 4px; }
 
 /* 倒计时环 */
 .turn-ring {
-  position: absolute; top: -6px; left: 8px; right: 8px; height: 3px;
-  background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden;
+  position: absolute; top: -9px; left: 6px; right: 6px; height: 7px;
+  background: rgba(13,17,23,0.75); border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 999px; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.45);
 }
 .turn-ring-progress {
-  height: 100%; background: linear-gradient(90deg, #3fb950, #ffd33d, #f85149);
-  transition: width 0.1s linear;
+  height: 100%;
+  box-shadow: 0 0 10px currentColor, 0 0 18px currentColor;
+  transition: width 0.1s linear, background-color 0.2s linear;
 }
 
 /* 下注筹码（显示在座位外侧朝向底池） */
 .bet-chip {
-  position: absolute; left: 50%; top: -28px; transform: translateX(-50%);
+  position: absolute; left: 50%; top: -35px; transform: translateX(-50%);
   background: #0d1117; border: 1px solid #ffd33d; color: #ffd33d;
   padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;
   display: flex; align-items: center; gap: 4px; white-space: nowrap;
